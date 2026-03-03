@@ -275,9 +275,25 @@ canvas { display:block; position:absolute; top:0; left:0; }
 ::-webkit-scrollbar { width:4px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* ファイルinputをiOS含め確実に非表示 */
+input[type=file] {
+  position:fixed !important;
+  top:-9999px !important;
+  left:-9999px !important;
+  width:1px !important;
+  height:1px !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
 </style>
 </head>
 <body>
+
+<!-- 共通ファイルinput（body直下に1つだけ、完全に非表示） -->
+<input type="file" id="shared-file-input" accept="image/*" capture="environment"
+  style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;"
+  onchange="handleSharedFile(event)">
 
 <!-- 横向きメッセージ -->
 <div id="rotate-msg">
@@ -322,8 +338,7 @@ canvas { display:block; position:absolute; top:0; left:0; }
       </div>
 
       <div id="action-bar">
-        <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleFile(event)">
-        <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+        <button class="btn btn-primary" onclick="triggerFileInput('today')">
           📸 撮影して追加
         </button>
         <button class="btn btn-secondary" onclick="openManualModal()">✏️ 手入力</button>
@@ -357,8 +372,7 @@ canvas { display:block; position:absolute; top:0; left:0; }
       </div>
 
       <div id="date-action-bar" style="flex-shrink:0;background:var(--panel);border-top:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;align-items:center;">
-        <input type="file" id="date-file-input" accept="image/*" capture="environment" onchange="handleDateFile(event)" style="display:none;">
-        <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:13px;" onclick="document.getElementById('date-file-input').click()">
+        <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:13px;" onclick="triggerFileInput('date')">
           📸 撮影して追加
         </button>
         <button class="btn btn-secondary" onclick="openManualModal(currentDateViewKey)">✏️ 手入力</button>
@@ -844,15 +858,28 @@ function resizeDatePhysics() {
   });
 }
 
-// 日付ファイルアップロード
-async function handleDateFile(e) {
+// ══ 共通ファイル入力 ══
+let fileInputTarget = 'today'; // 'today' or 'date'
+
+function triggerFileInput(target) {
+  fileInputTarget = target;
+  const inp = document.getElementById('shared-file-input');
+  inp.value = ''; // 同じファイルを再選択できるようリセット
+  inp.click();
+}
+
+async function handleSharedFile(e) {
   const file = e.target.files[0]; if (!file) return;
   e.target.value = '';
   document.getElementById('loading').classList.add('show');
   try {
     const b64  = await toBase64(file);
     const food = await analyzeFood(b64);
-    addDateFoodItem(food);
+    if (fileInputTarget === 'date') {
+      addDateFoodItem(food);
+    } else {
+      addFoodItem(food);
+    }
     showToast(`🍴 ${food.name} を追加しました！`);
   } catch(err) {
     console.error(err);
@@ -902,23 +929,6 @@ function showView(name) {
 // ══════════════════════════════════════
 // FILE / AI
 // ══════════════════════════════════════
-async function handleFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  e.target.value = '';
-  document.getElementById('loading').classList.add('show');
-  try {
-    const b64  = await toBase64(file);
-    const food = await analyzeFood(b64);
-    addFoodItem(food);
-    showToast(`🍴 ${food.name} を追加しました！`);
-  } catch(err) {
-    console.error(err);
-    showToast('❌ 認識できませんでした。手入力をお試しください。');
-  } finally {
-    document.getElementById('loading').classList.remove('show');
-  }
-}
 
 function toBase64(file) {
   return new Promise((res, rej) => {
@@ -1218,23 +1228,16 @@ function renderDayDetail(ds) {
 }
 
 // ══════════════════════════════════════
-// GYROSCOPE（キャリブレーション方式）
+// GYROSCOPE
 // ══════════════════════════════════════
 let gyroEnabled  = false;
-let gyroBetaBase  = null; // ONにした瞬間のbeta（基準値）
-let gyroGammaBase = null; // ONにした瞬間のgamma（基準値）
 
 function syncGyroBtn() {
   ['gyro-btn','gyro-btn2'].forEach(id => {
     const btn = document.getElementById(id);
     if (!btn) return;
-    if (gyroEnabled) {
-      btn.classList.add('gyro-on');
-      btn.textContent = '🌀';
-    } else {
-      btn.classList.remove('gyro-on');
-      btn.textContent = '📱';
-    }
+    btn.classList.toggle('gyro-on', gyroEnabled);
+    btn.textContent = gyroEnabled ? '🌀' : '📱';
   });
 }
 
@@ -1253,10 +1256,7 @@ function requestGyro() {
 
 function enableGyro() {
   if (gyroEnabled) {
-    // OFF
     gyroEnabled = false;
-    gyroBetaBase = null;
-    gyroGammaBase = null;
     window.removeEventListener('deviceorientation', handleOrientation);
     engine.gravity.x = 0;     engine.gravity.y = 1.5;
     dateEngine.gravity.x = 0; dateEngine.gravity.y = 1.5;
@@ -1264,33 +1264,42 @@ function enableGyro() {
     showToast('📱 ジャイロ OFF');
     return;
   }
-  // ON：最初のイベントで基準値を記録するためフラグだけ立てる
-  gyroEnabled  = true;
-  gyroBetaBase  = null; // 最初のhandleOrientationで設定
-  gyroGammaBase = null;
+  gyroEnabled = true;
   window.addEventListener('deviceorientation', handleOrientation, true);
   syncGyroBtn();
-  showToast('🌀 ジャイロ ON！今の向きが基準です');
+  showToast('🌀 ジャイロ ON！傾けてみて！');
 }
+
+// betaの平滑化用
+let smoothBeta  = null;
+let smoothGamma = null;
+const SMOOTH = 0.2;
 
 function handleOrientation(e) {
   if (!gyroEnabled) return;
-  const beta  = e.beta  ?? 0;
-  const gamma = e.gamma ?? 0;
 
-  // 最初の呼び出しで「今の持ち方」を基準として記録
-  if (gyroBetaBase === null) {
-    gyroBetaBase  = beta;
-    gyroGammaBase = gamma;
-    return;
+  const rawBeta  = e.beta  ?? 90;
+  const rawGamma = e.gamma ?? 0;
+
+  if (smoothBeta === null) {
+    smoothBeta  = rawBeta;
+    smoothGamma = rawGamma;
+  } else {
+    smoothBeta  = smoothBeta  + SMOOTH * (rawBeta  - smoothBeta);
+    smoothGamma = smoothGamma + SMOOTH * (rawGamma - smoothGamma);
   }
 
-  // 基準からのズレだけを重力に反映
-  const db = beta  - gyroBetaBase;   // 前後のズレ
-  const dg = gamma - gyroGammaBase;  // 左右のズレ
+  // 左右傾き: gammaをそのまま（右傾け→右に転がる）
+  const gx = Math.max(-3, Math.min(3, smoothGamma / 25));
 
-  const gx = Math.max(-3, Math.min(3, dg / 18));
-  const gy = Math.max(-2, Math.min(3, db / 18));
+  // 上下重力:
+  // iPhoneを縦に持つ = beta≈90 → 普通に下に落ちる (gy=1.5)
+  // 上部を下に傾ける = beta増加(90→135) → より強く下に落ちる
+  // 下部を下に傾ける = beta減少(90→45)  → 上に転がる
+  // 机に置く        = beta≈0            → ほぼ無重力だが最小値で少し下
+  // betaを-90〜90の範囲に正規化してそのまま使う
+  const normalized = Math.max(-90, Math.min(90, smoothBeta - 90)); // 縦持ち=0
+  const gy = Math.max(-2, Math.min(3, normalized / 30 + 1.0)); // 最小1.0の下向き重力を保持
 
   engine.gravity.x     = gx; engine.gravity.y     = gy;
   dateEngine.gravity.x = gx; dateEngine.gravity.y = gy;
