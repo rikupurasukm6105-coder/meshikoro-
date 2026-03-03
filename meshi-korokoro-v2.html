@@ -899,6 +899,7 @@ function addDateFoodItem(food) {
   document.getElementById('date-hint-msg').style.display = 'none';
   updateDateStats(currentDateViewKey);
   renderCalendar();
+  maybeShowAd();
 }
 
 // 日付ビューを開く
@@ -971,6 +972,7 @@ function addFoodItem(food) {
   addPhysBody(item);
   document.getElementById('hint-msg').style.display = 'none';
   updateTodayStats();
+  maybeShowAd();
 }
 
 // ══════════════════════════════════════
@@ -1293,16 +1295,144 @@ function handleOrientation(e) {
   const gx = Math.max(-3, Math.min(3, smoothGamma / 25));
 
   // 上下重力:
-  // iPhoneを縦に持つ = beta≈90 → 普通に下に落ちる (gy=1.5)
-  // 上部を下に傾ける = beta増加(90→135) → より強く下に落ちる
-  // 下部を下に傾ける = beta減少(90→45)  → 上に転がる
-  // 机に置く        = beta≈0            → ほぼ無重力だが最小値で少し下
-  // betaを-90〜90の範囲に正規化してそのまま使う
-  const normalized = Math.max(-90, Math.min(90, smoothBeta - 90)); // 縦持ち=0
-  const gy = Math.max(-2, Math.min(3, normalized / 30 + 1.0)); // 最小1.0の下向き重力を保持
+  // 縦持ち基準(beta≈80)で gy=1.5（普通の重力）
+  // そこから傾けた分だけズレを加算
+  // beta=80+45=125 → gy=1.5+1.5=3（強く下）
+  // beta=80-45=35  → gy=1.5-1.5=0（無重力）
+  // beta=80-80=0   → gy=1.5-2.7≈-1（少し上）だが最小0.3でクランプ
+  const BETA_BASE = 80; // 実測の縦持ち基準値
+  const tilt = smoothBeta - BETA_BASE; // 縦持ちからのズレ
+  const gy = Math.max(0.3, Math.min(3, 1.5 + tilt / 30));
 
   engine.gravity.x     = gx; engine.gravity.y     = gy;
   dateEngine.gravity.x = gx; dateEngine.gravity.y = gy;
+}
+
+// ══════════════════════════════════════
+// 広告・プレミアム機能
+// ══════════════════════════════════════
+const AD_PRICE_YEN = 490;
+let foodAddCount = 0; // 追加回数カウント（広告トリガー用）
+let isPremium = localStorage.getItem('meshikoro_premium') === 'true';
+
+// 広告モーダルHTML（body末尾に追加）
+function initAdSystem() {
+  // プレミアムバナーをaction-barに追加
+  if (!isPremium) {
+    const bar = document.getElementById('action-bar');
+    const adBanner = document.createElement('div');
+    adBanner.id = 'ad-banner';
+    adBanner.style.cssText = `
+      width:100%; text-align:center; padding:4px 0;
+      font-size:11px; color:var(--muted); font-family:'DotGothic16',monospace;
+      border-top:1px solid var(--border); background:var(--panel);
+      cursor:pointer; flex-basis:100%; order:-1; margin-bottom:4px;
+    `;
+    adBanner.innerHTML = `<span style="color:var(--accent2)">✨ 広告を非表示</span> ${AD_PRICE_YEN}円 — タップして購入`;
+    adBanner.onclick = () => openPremiumModal();
+    bar.prepend(adBanner);
+  }
+}
+
+function openPremiumModal() {
+  const overlay = document.createElement('div');
+  overlay.id = 'premium-overlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:700;background:rgba(30,15,5,0.6);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  `;
+  overlay.innerHTML = `
+    <div style="background:var(--panel);border-radius:16px;padding:24px;width:100%;max-width:320px;text-align:center;">
+      <div style="font-size:40px;margin-bottom:8px;">✨</div>
+      <div style="font-family:'DotGothic16',monospace;font-size:16px;color:var(--accent2);margin-bottom:8px;">めしコロ プレミアム</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:16px;">
+        広告を完全に非表示にする<br>買い切りプラン
+      </div>
+      <div style="font-size:28px;font-weight:800;color:var(--accent);margin-bottom:20px;">${AD_PRICE_YEN}円</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('premium-overlay').remove()" 
+          style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--card);font-family:'DotGothic16',monospace;cursor:pointer;color:var(--muted)">
+          キャンセル
+        </button>
+        <button onclick="purchasePremium()"
+          style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-family:'DotGothic16',monospace;cursor:pointer;font-size:14px;">
+          購入する 🎉
+        </button>
+      </div>
+      <div style="margin-top:12px;font-size:10px;color:var(--muted);">
+        ※実際の決済にはApp Store連携が必要です
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+}
+
+function purchasePremium() {
+  // 実際はRevenueCatやStoreKit経由。ここではデモとしてlocalStorageに保存
+  isPremium = true;
+  localStorage.setItem('meshikoro_premium', 'true');
+  document.getElementById('premium-overlay')?.remove();
+  document.getElementById('ad-banner')?.remove();
+  document.getElementById('interstitial-ad')?.remove();
+  showToast('✨ プレミアムになりました！広告が消えました 🎉');
+}
+
+// 動画広告インタースティシャル（2食追加ごとに表示）
+function maybeShowAd() {
+  if (isPremium) return;
+  foodAddCount++;
+  if (foodAddCount % 2 === 0) {
+    setTimeout(showInterstitialAd, 800);
+  }
+}
+
+function showInterstitialAd() {
+  if (isPremium) return;
+  const ad = document.createElement('div');
+  ad.id = 'interstitial-ad';
+  ad.style.cssText = `
+    position:fixed;inset:0;z-index:800;background:rgba(0,0,0,0.92);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  `;
+  let countdown = 5;
+  ad.innerHTML = `
+    <div style="color:#aaa;font-size:11px;font-family:'DotGothic16',monospace;position:absolute;top:16px;right:16px;" id="ad-close-timer">${countdown}秒後にスキップ</div>
+    <div style="width:90%;max-width:360px;aspect-ratio:16/9;background:#111;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;border:1px solid #333;">
+      <div style="font-size:40px;">📺</div>
+      <div style="color:#fff;font-family:'DotGothic16',monospace;font-size:13px;">広告動画</div>
+      <div style="color:#888;font-size:11px;">（AdMob SDK連携後に実際の広告が表示されます）</div>
+    </div>
+    <button id="ad-skip-btn" disabled
+      style="padding:10px 28px;border-radius:10px;border:none;background:#444;color:#888;font-family:'DotGothic16',monospace;font-size:13px;cursor:not-allowed;">
+      スキップ（${countdown}）
+    </button>
+    <button onclick="openPremiumModal()"
+      style="padding:8px 20px;border-radius:8px;border:1px solid #666;background:none;color:#aaa;font-family:'DotGothic16',monospace;font-size:11px;cursor:pointer;">
+      ✨ ${AD_PRICE_YEN}円で広告を消す
+    </button>
+  `;
+  document.body.appendChild(ad);
+
+  const timer = setInterval(() => {
+    countdown--;
+    const timerEl = document.getElementById('ad-close-timer');
+    const skipBtn = document.getElementById('ad-skip-btn');
+    if (timerEl) timerEl.textContent = countdown > 0 ? `${countdown}秒後にスキップ` : '';
+    if (skipBtn) {
+      skipBtn.textContent = countdown > 0 ? `スキップ（${countdown}）` : 'スキップ ✕';
+      if (countdown <= 0) {
+        skipBtn.disabled = false;
+        skipBtn.style.background = 'var(--accent)';
+        skipBtn.style.color = '#fff';
+        skipBtn.style.cursor = 'pointer';
+        skipBtn.onclick = () => { document.getElementById('interstitial-ad')?.remove(); };
+        clearInterval(timer);
+      }
+    } else {
+      clearInterval(timer);
+    }
+  }, 1000);
 }
 
 // ══════════════════════════════════════
@@ -1334,11 +1464,11 @@ function initPWA() {
 }
 
 window.addEventListener('load', () => {
-  // DOMレイアウト確定後に初期化
   setTimeout(() => {
     resizePhysics();
     reloadTodayPhysics();
     initPWA();
+    initAdSystem();
   }, 150);
 });
 </script>
