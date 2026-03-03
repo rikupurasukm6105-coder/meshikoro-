@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>めしコロ 🍙</title>
-
-<!-- PWA -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="めしコロ">
@@ -13,14 +11,6 @@
 <meta name="theme-color" content="#f5f0e8">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" id="apple-icon" href="">
-
-<!-- 横画面ロック -->
-<style>
-@media screen and (orientation: landscape) {
-  #rotate-msg { display:flex !important; }
-  #app-root    { display:none !important; }
-}
-</style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 <style>
@@ -41,7 +31,6 @@
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html, body { height:100%; overflow:hidden; background:var(--bg); }
 
-/* 横向きメッセージ */
 #rotate-msg {
   display:none;
   position:fixed; inset:0; z-index:9999;
@@ -50,12 +39,10 @@ html, body { height:100%; overflow:hidden; background:var(--bg); }
   flex-direction:column; gap:12px;
   font-family:'Kaisei Tokumin',serif; color:var(--text); font-size:18px;
 }
+#rotate-msg.show { display:flex; }
 
-#app-root {
-  display:flex; flex-direction:column; height:100%;
-}
+#app-root { display:flex; flex-direction:column; height:100%; }
 
-/* ── HEADER ── */
 header {
   height:54px; flex-shrink:0;
   background:var(--panel);
@@ -73,12 +60,10 @@ header {
 }
 .nav-tab.active { border-color:var(--accent); color:var(--accent); background:rgba(212,98,42,0.08); }
 
-/* ── VIEWS ── */
 #app { flex:1; overflow:hidden; position:relative; min-height:0; }
 .view { display:none; height:100%; flex-direction:column; }
 .view.active { display:flex; }
 
-/* ── TODAY ── */
 #today-stats {
   flex-shrink:0; background:var(--panel);
   border-bottom:1px solid var(--border);
@@ -98,13 +83,11 @@ canvas { display:block; position:absolute; top:0; left:0; }
 #hint-msg .big { font-size:56px; margin-bottom:8px; }
 #hint-msg p { font-size:13px; line-height:1.7; }
 
-/* ── ACTION BAR ── */
 #action-bar {
   flex-shrink:0; background:var(--panel);
   border-top:1px solid var(--border);
   padding:10px 16px; display:flex; gap:8px; align-items:center;
 }
-#file-input { display:none; }
 
 .btn {
   border:none; border-radius:10px; padding:10px 16px;
@@ -122,8 +105,7 @@ canvas { display:block; position:absolute; top:0; left:0; }
 }
 .btn-secondary:hover { border-color:var(--accent2); }
 
-/* ジャイロボタン */
-#gyro-btn.gyro-on {
+#gyro-btn.gyro-on, #gyro-btn2.gyro-on {
   border-color:var(--green); color:var(--green);
   background:rgba(42,122,94,0.1);
   animation:gyroPulse 1.8s ease-in-out infinite;
@@ -133,7 +115,6 @@ canvas { display:block; position:absolute; top:0; left:0; }
   50%      { box-shadow:0 0 0 6px rgba(42,122,94,0); }
 }
 
-/* ── CALENDAR ── */
 #view-calendar { overflow:hidden; }
 #cal-header {
   flex-shrink:0; display:flex; align-items:center;
@@ -166,7 +147,6 @@ canvas { display:block; position:absolute; top:0; left:0; }
 .cal-emojis { font-size:13px; line-height:1.3; flex:1; overflow:hidden; word-break:break-all; }
 .cal-kcal { font-size:9px; color:var(--green); font-family:'DotGothic16',monospace; margin-top:auto; }
 
-/* ── DAY DETAIL ── */
 #day-detail { position:fixed; inset:0; z-index:200; display:none; align-items:flex-end; }
 #day-detail.open { display:flex; }
 #day-detail-backdrop { position:absolute; inset:0; background:rgba(30,15,5,0.45); }
@@ -200,7 +180,6 @@ canvas { display:block; position:absolute; top:0; left:0; }
 .icon-btn:hover { border-color:var(--accent); color:var(--accent); }
 .icon-btn.del:hover { border-color:#b42820; color:#b42820; }
 
-/* ── FOOD MENU (タップメニュー) ── */
 #food-menu {
   position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
   background:var(--card); border:1px solid var(--border); border-radius:16px;
@@ -209,7 +188,10 @@ canvas { display:block; position:absolute; top:0; left:0; }
   animation:fadeInUp 0.2s ease;
 }
 #food-menu.show { display:flex; }
-@keyframes fadeInUp { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+@keyframes fadeInUp {
+  from{opacity:0;transform:translateX(-50%) translateY(8px)}
+  to{opacity:1;transform:translateX(-50%) translateY(0)}
+}
 .food-menu-name { font-size:13px; font-weight:700; color:var(--text); max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .food-menu-btn {
   background:var(--panel); border:1px solid var(--border); border-radius:8px;
@@ -222,7 +204,6 @@ canvas { display:block; position:absolute; top:0; left:0; }
   color:var(--muted); padding:0 2px; line-height:1;
 }
 
-/* ── MODALS ── */
 .modal-overlay {
   position:fixed; inset:0; z-index:300; background:rgba(30,15,5,0.5);
   display:none; align-items:center; justify-content:center; padding:20px;
@@ -231,6 +212,7 @@ canvas { display:block; position:absolute; top:0; left:0; }
 .modal {
   background:var(--panel); border:1px solid var(--border); border-radius:16px;
   padding:20px; width:100%; max-width:360px; animation:fadeInScale 0.2s ease;
+  max-height:90vh; overflow-y:auto;
 }
 @keyframes fadeInScale { from{opacity:0;transform:scale(0.93)} to{opacity:1;transform:scale(1)} }
 .modal h3 { font-family:'DotGothic16',monospace; color:var(--accent2); font-size:14px; margin-bottom:14px; }
@@ -253,7 +235,6 @@ canvas { display:block; position:absolute; top:0; left:0; }
 .modal-actions .btn { flex:1; justify-content:center; }
 .btn-cancel { background:var(--card); color:var(--muted); border:1px solid var(--border); }
 
-/* ── LOADING / TOAST ── */
 #loading {
   position:fixed; inset:0; z-index:400; background:rgba(245,240,232,0.88);
   display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px;
@@ -272,50 +253,36 @@ canvas { display:block; position:absolute; top:0; left:0; }
 }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
-/* 広告オフバナー */
 #ad-banner-area {
-  flex-shrink: 0;
-  background: linear-gradient(135deg, rgba(212,98,42,0.08), rgba(184,134,11,0.08));
-  border-bottom: 1px solid var(--border);
+  flex-shrink:0;
+  background:linear-gradient(135deg, rgba(212,98,42,0.08), rgba(184,134,11,0.08));
+  border-bottom:1px solid var(--border);
 }
 #ad-banner-inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 7px 16px;
-  cursor: pointer;
-  font-family: 'DotGothic16', monospace;
-  font-size: 12px;
-  color: var(--muted);
+  display:flex; align-items:center; justify-content:center;
+  gap:10px; padding:7px 16px; cursor:pointer;
+  font-family:'DotGothic16',monospace; font-size:12px; color:var(--muted);
 }
-#ad-banner-inner:active { opacity: 0.7; }
-#ad-banner-inner span.highlight { color: var(--accent2); font-weight: bold; }
+#ad-banner-inner:active { opacity:0.7; }
+#ad-banner-inner span.highlight { color:var(--accent2); font-weight:bold; }
 
 ::-webkit-scrollbar { width:4px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
 
-/* ファイルinputをiOS含め確実に非表示 */
 input[type=file] {
-  position:fixed !important;
-  top:-9999px !important;
-  left:-9999px !important;
-  width:1px !important;
-  height:1px !important;
-  opacity:0 !important;
-  pointer-events:none !important;
+  position:fixed !important; top:-9999px !important; left:-9999px !important;
+  width:1px !important; height:1px !important; opacity:0 !important; pointer-events:none !important;
 }
 </style>
 </head>
 <body>
 
-<!-- 共通ファイルinput（body直下に1つだけ、完全に非表示） -->
 <input type="file" id="shared-file-input" accept="image/*" capture="environment"
   style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;"
   onchange="handleSharedFile(event)">
 
-<!-- 横向きメッセージ -->
+<!-- 横向きメッセージ（JSで制御） -->
 <div id="rotate-msg">
   <div style="font-size:48px">📱</div>
   <div>縦向きにしてください</div>
@@ -329,11 +296,9 @@ input[type=file] {
       <button class="nav-tab" onclick="showView('calendar')">カレンダー</button>
     </div>
   </header>
-  <!-- 広告オフバナー（プレミアム未加入時のみJSで表示） -->
   <div id="ad-banner-area"></div>
 
   <div id="app">
-
     <!-- TODAY VIEW -->
     <div id="view-today" class="view active">
       <div id="today-stats">
@@ -350,7 +315,6 @@ input[type=file] {
           <div class="t-stat-lbl">最新</div>
         </div>
       </div>
-
       <div id="canvas-wrap">
         <div id="hint-msg">
           <div class="big">🍽️</div>
@@ -358,17 +322,14 @@ input[type=file] {
         </div>
         <canvas id="world"></canvas>
       </div>
-
       <div id="action-bar">
-        <button class="btn btn-primary" onclick="triggerFileInput('today')">
-          📸 撮影して追加
-        </button>
+        <button class="btn btn-primary" onclick="triggerFileInput('today')">📸 撮影して追加</button>
         <button class="btn btn-secondary" onclick="openManualModal()">✏️ 手入力</button>
         <button class="btn btn-secondary" id="gyro-btn" onclick="requestGyro()">📱</button>
       </div>
     </div>
 
-    <!-- DATE VIEW（過去・未来の日付用） -->
+    <!-- DATE VIEW -->
     <div id="view-date" class="view">
       <div id="date-stats" style="flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:12px;align-items:center;">
         <button class="btn btn-secondary" style="padding:6px 10px;font-size:18px;" onclick="showView('calendar')">‹</button>
@@ -384,7 +345,6 @@ input[type=file] {
           <div class="t-stat-lbl">kcal</div>
         </div>
       </div>
-
       <div id="date-canvas-wrap" style="flex:1;position:relative;overflow:hidden;min-height:0;">
         <div id="date-hint-msg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);text-align:center;color:rgba(44,33,24,0.2);pointer-events:none;">
           <div style="font-size:56px;margin-bottom:8px;">🍽️</div>
@@ -392,11 +352,8 @@ input[type=file] {
         </div>
         <canvas id="date-world"></canvas>
       </div>
-
       <div id="date-action-bar" style="flex-shrink:0;background:var(--panel);border-top:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:13px;" onclick="triggerFileInput('date')">
-          📸 撮影して追加
-        </button>
+        <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:13px;" onclick="triggerFileInput('date')">📸 撮影して追加</button>
         <button class="btn btn-secondary" onclick="openManualModal(currentDateViewKey)">✏️ 手入力</button>
         <button class="btn btn-secondary" id="gyro-btn2" onclick="requestGyro()">📱</button>
       </div>
@@ -419,21 +376,10 @@ input[type=file] {
         <div class="cal-grid" id="cal-grid"></div>
       </div>
     </div>
+  </div>
+</div>
 
-  </div><!-- #app -->
-</div><!-- #app-root -->
-
-<!-- ジャイロデバッグ表示（確認後に削除） -->
-<div id="gyro-debug" style="
-  display:none; position:fixed; top:60px; left:50%;
-  transform:translateX(-50%);
-  background:rgba(0,0,0,0.75); color:#fff;
-  font-family:monospace; font-size:13px;
-  padding:8px 14px; border-radius:8px; z-index:999;
-  pointer-events:none; white-space:nowrap;
-"></div>
-
-<!-- FOOD MENU (タップ時) -->
+<!-- FOOD MENU -->
 <div id="food-menu">
   <span id="fm-emoji" style="font-size:24px"></span>
   <span class="food-menu-name" id="fm-name"></span>
@@ -449,9 +395,7 @@ input[type=file] {
     <div id="day-detail-title"></div>
     <div id="day-detail-summary"></div>
     <div id="day-detail-list"></div>
-    <button class="btn btn-primary" id="day-add-btn" style="margin-top:12px;width:100%;justify-content:center" onclick="openPastAddModal()">
-      ＋ この日に食事を追加
-    </button>
+    <button class="btn btn-primary" style="margin-top:12px;width:100%;justify-content:center" onclick="openPastAddModal()">＋ この日に食事を追加</button>
     <button class="btn btn-cancel" style="margin-top:8px;width:100%;justify-content:center" onclick="closeDayDetail()">閉じる</button>
   </div>
 </div>
@@ -513,21 +457,18 @@ input[type=file] {
 <div id="loading"><div class="spin"></div><div class="load-txt">AI解析中...</div></div>
 <div id="toast"></div>
 
-<!-- カメラUI（丸いガイド付きシャッター画面） -->
+<!-- カメラUI -->
 <div id="camera-ui" style="display:none;position:fixed;inset:0;z-index:900;background:#000;flex-direction:column;align-items:center;justify-content:center;">
   <div style="position:relative;width:100%;flex:1;overflow:hidden;">
     <video id="camera-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
-    <!-- 暗いオーバーレイ + 丸い穴 -->
     <canvas id="camera-overlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
-    <!-- ガイドテキスト -->
     <div style="position:absolute;top:16px;width:100%;text-align:center;color:#fff;font-family:'DotGothic16',monospace;font-size:13px;text-shadow:0 1px 4px rgba(0,0,0,0.8);">
       丸の中に食べ物を入れてね 🍽️
     </div>
   </div>
-  <!-- シャッターバー -->
   <div style="flex-shrink:0;background:#111;padding:20px 0;width:100%;display:flex;align-items:center;justify-content:center;gap:40px;">
     <button onclick="closeCameraUI()" style="background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:50px;height:50px;color:#fff;font-size:22px;cursor:pointer;">✕</button>
-    <button id="shutter-btn" onclick="takePhoto()" style="background:#fff;border:none;border-radius:50%;width:70px;height:70px;font-size:32px;cursor:pointer;box-shadow:0 0 0 4px rgba(255,255,255,0.3);">📸</button>
+    <button onclick="takePhoto()" style="background:#fff;border:none;border-radius:50%;width:70px;height:70px;font-size:32px;cursor:pointer;box-shadow:0 0 0 4px rgba(255,255,255,0.3);">📸</button>
     <div style="width:50px;"></div>
   </div>
 </div>
@@ -536,150 +477,84 @@ input[type=file] {
 'use strict';
 
 // ══════════════════════════════════════
+// 横画面ロック（JSで制御 ← キーボード誤検知バグ修正）
+// ══════════════════════════════════════
+let isKeyboardOpen = false;
+const rotateMsg   = document.getElementById('rotate-msg');
+const appRoot     = document.getElementById('app-root');
+
+// inputにフォーカスが当たったらキーボード開放フラグを立てる
+document.addEventListener('focusin', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    isKeyboardOpen = true;
+  }
+});
+document.addEventListener('focusout', () => {
+  // 少し遅延してからリセット（次のfocusinが来る前に誤って解除しないよう）
+  setTimeout(() => { isKeyboardOpen = false; checkOrientation(); }, 300);
+});
+
+function checkOrientation() {
+  if (isKeyboardOpen) return; // キーボード表示中は無視
+  const isLandscape = window.innerWidth > window.innerHeight;
+  rotateMsg.classList.toggle('show', isLandscape);
+  appRoot.style.display = isLandscape ? 'none' : '';
+}
+
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 200));
+
+// ══════════════════════════════════════
 // DATA STORE
 // ══════════════════════════════════════
-const todayKey = () => new Date().toISOString().slice(0,10);
-const getStore = () => { try { return JSON.parse(localStorage.getItem('meshikoroV3')||'{}'); } catch{ return {}; } };
+const todayKey  = () => new Date().toISOString().slice(0,10);
+const getStore  = () => { try { return JSON.parse(localStorage.getItem('meshikoroV3')||'{}'); } catch{ return {}; } };
 const saveStore = s => localStorage.setItem('meshikoroV3', JSON.stringify(s));
-const getDay  = d => { const s=getStore(); return s[d]||[]; };
-const saveDay = (d,items) => { const s=getStore(); s[d]=items; saveStore(s); };
+const getDay    = d => { const s=getStore(); return s[d]||[]; };
+const saveDay   = (d,items) => { const s=getStore(); s[d]=items; saveStore(s); };
 
 // ══════════════════════════════════════
 // PHYSICS ENGINE
 // ══════════════════════════════════════
 const { Engine, Runner, Bodies, Body, World, Events, Mouse, MouseConstraint } = Matter;
 
-const engine  = Engine.create({ gravity:{ x:0, y:1.5 } });
+const engine   = Engine.create({ gravity:{ x:0, y:1.5 } });
 const canvasEl = document.getElementById('world');
 const wrapEl   = document.getElementById('canvas-wrap');
 const ctx      = canvasEl.getContext('2d');
 
 function getCanvasSize() {
   const r = wrapEl.getBoundingClientRect();
-  return {
-    W: Math.floor(r.width)  || window.innerWidth,
-    H: Math.floor(r.height) || 400
-  };
+  return { W: Math.floor(r.width)||window.innerWidth, H: Math.floor(r.height)||400 };
 }
 
 let { W, H } = getCanvasSize();
 canvasEl.width  = W;
 canvasEl.height = H;
 
-// ══ 壁 ══
 const THICK = 80;
 let walls = [];
 function rebuildWalls() {
   if (walls.length) World.remove(engine.world, walls);
   const wo = { isStatic:true, friction:0.5, restitution:0.05, label:'wall' };
   walls = [
-    Bodies.rectangle(W/2,      H+THICK/2,  W+THICK*2, THICK,     wo),
-    Bodies.rectangle(-THICK/2, H/2,        THICK,     H+THICK*2, wo),
-    Bodies.rectangle(W+THICK/2,H/2,        THICK,     H+THICK*2, wo),
-    Bodies.rectangle(W/2,      -THICK/2,   W+THICK*2, THICK,     wo),
+    Bodies.rectangle(W/2,       H+THICK/2,  W+THICK*2, THICK,     wo),
+    Bodies.rectangle(-THICK/2,  H/2,        THICK,     H+THICK*2, wo),
+    Bodies.rectangle(W+THICK/2, H/2,        THICK,     H+THICK*2, wo),
+    Bodies.rectangle(W/2,       -THICK/2,   W+THICK*2, THICK,     wo),
   ];
   World.add(engine.world, walls);
 }
 rebuildWalls();
 
-// マウス/タッチ（Matter.jsのドラッグ用）
 const mMouse = Mouse.create(canvasEl);
-const mc = MouseConstraint.create(engine, {
-  mouse: mMouse,
-  constraint:{ stiffness:0.15 }
-});
+const mc = MouseConstraint.create(engine, { mouse:mMouse, constraint:{ stiffness:0.15 } });
 World.add(engine.world, mc);
-
 Runner.run(Runner.create(), engine);
 
-// ══════════════════════════════════════
-// 🎵 サウンドシステム（Web Audio API）
-// ══════════════════════════════════════
-let audioCtx = null;
-
-function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
-}
-
-function playSound(type, vol = 1.0) {
-  try {
-    const ctx = getAudioCtx();
-    const v = Math.min(1, Math.max(0.01, vol));
-
-    if (type === 'add') {
-      // 追加時：ピコン！と3音上がるポップ
-      [[523,0],[659,80],[784,160]].forEach(([freq, delay]) => {
-        setTimeout(() => {
-          const o = ctx.createOscillator();
-          const g = ctx.createGain();
-          o.connect(g); g.connect(ctx.destination);
-          o.type = 'sine';
-          o.frequency.setValueAtTime(freq, ctx.currentTime);
-          o.frequency.exponentialRampToValueAtTime(freq * 1.6, ctx.currentTime + 0.12);
-          g.gain.setValueAtTime(0.18, ctx.currentTime);
-          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
-          o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.18);
-        }, delay);
-      });
-
-    } else if (type === 'wall') {
-      // 壁・床：柔らかいポンッ
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.type = 'sine';
-      const f = 160 + Math.random() * 80;
-      o.frequency.setValueAtTime(f, ctx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(f * 0.4, ctx.currentTime + 0.09);
-      g.gain.setValueAtTime(0.13 * v, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-      o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.1);
-
-    } else if (type === 'collide') {
-      // 食べ物同士：壁と同じ柔らかいポンッ
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.type = 'sine';
-      const f = 160 + Math.random() * 80;
-      o.frequency.setValueAtTime(f, ctx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(f * 0.4, ctx.currentTime + 0.09);
-      g.gain.setValueAtTime(0.13 * v, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-      o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.1);
-    }
-  } catch(e) {}
-}
-
-// 衝突音（鳴りすぎ防止クールダウン）
-let lastWallMs = 0, lastCollideMs = 0;
-function setupCollisionSounds(eng) {
-  Events.on(eng, 'collisionStart', (ev) => {
-    const now = Date.now();
-    ev.pairs.forEach(({ bodyA, bodyB }) => {
-      const speed = Math.max(
-        Math.hypot(bodyA.velocity.x, bodyA.velocity.y),
-        Math.hypot(bodyB.velocity.x, bodyB.velocity.y)
-      );
-      if (speed < 1.0) return;
-      const aWall = bodyA.label === 'wall';
-      const bWall = bodyB.label === 'wall';
-      if (aWall || bWall) {
-        if (now - lastWallMs > 70) { lastWallMs = now; playSound('wall', speed / 10); }
-      } else {
-        if (now - lastCollideMs > 90) { lastCollideMs = now; playSound('wall', speed / 8); }
-      }
-    });
-  });
-}
-setupCollisionSounds(engine);
-
-// 食べ物リスト
 let physBodies = [];
 
-// 画像キャッシュ（base64→ImageObject）
+// 画像キャッシュ
 const imgCache = {};
 function getImg(base64) {
   if (!base64) return null;
@@ -687,213 +562,168 @@ function getImg(base64) {
   const img = new Image();
   img.src = 'data:image/jpeg;base64,' + base64;
   imgCache[base64] = img;
-  return null; // 初回はまだ読み込み中
+  return null;
 }
 
-// 円形マスクで描画するヘルパー
 function drawCircleItem(context, food, x, y, angle, sz) {
   context.save();
   context.translate(x, y);
   context.rotate(angle);
-
   if (food.photoBase64) {
     const img = getImg(food.photoBase64);
     if (img) {
-      // 写真を円形にくり抜いて描画
       context.beginPath();
-      context.arc(0, 0, sz, 0, Math.PI * 2);
+      context.arc(0, 0, sz, 0, Math.PI*2);
       context.clip();
-      context.drawImage(img, -sz, -sz, sz * 2, sz * 2);
-      // 枠線
+      context.drawImage(img, -sz, -sz, sz*2, sz*2);
       context.beginPath();
-      context.arc(0, 0, sz, 0, Math.PI * 2);
+      context.arc(0, 0, sz, 0, Math.PI*2);
       context.strokeStyle = 'rgba(255,255,255,0.6)';
       context.lineWidth = 2;
       context.stroke();
     } else {
-      // 画像読み込み中は絵文字で代替
-      context.font = `${Math.round(sz * 1.6)}px serif`;
+      context.font = `${Math.round(sz*1.6)}px serif`;
       context.textAlign = 'center';
       context.textBaseline = 'middle';
-      context.fillText(food.emoji || '📸', 0, 0);
+      context.fillText(food.emoji||'📸', 0, 0);
     }
   } else {
-    // 手入力は絵文字
-    context.font = `${Math.round(sz * 1.6)}px serif`;
+    context.font = `${Math.round(sz*1.6)}px serif`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.fillText(food.emoji || '🍽️', 0, 0);
+    context.fillText(food.emoji||'🍽️', 0, 0);
   }
-
   context.restore();
 }
 
-// ══ 自前描画ループ（Matter Renderを使わない） ══
 function drawLoop() {
   requestAnimationFrame(drawLoop);
-  const cw = canvasEl.width;
-  const ch = canvasEl.height;
-  ctx.clearRect(0, 0, cw, ch);
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
   physBodies.forEach(({ body, food }) => {
-    if (!body || !food) return;
+    if (!body||!food) return;
     const { x, y } = body.position;
-    if (x < -200 || x > cw+200 || y < -200 || y > ch+200) return;
-    drawCircleItem(ctx, food, x, y, body.angle, body._sz || 42);
+    if (x<-200||x>canvasEl.width+200||y<-200||y>canvasEl.height+200) return;
+    drawCircleItem(ctx, food, x, y, body.angle, body._sz||42);
   });
 }
 drawLoop();
 
-// ══ 食べ物を物理世界に追加 ══
 function addPhysBody(food) {
-  const sz  = 32 + Math.random() * 12;
-  const pad = sz + 20;
-  const x   = pad + Math.random() * Math.max(10, W - pad * 2);
-  const y   = sz + 10;
-
-  // すべて円形の当たり判定（シンプルで確実）
-  const body = Bodies.circle(x, y, sz, {
-    restitution: 0.2,
-    friction:    0.4,
-    frictionAir: 0.01,
-  });
-
-  body._sz   = sz;
-  body._food = food;
+  const sz  = 32 + Math.random()*12;
+  const pad = sz+20;
+  const x   = pad + Math.random()*Math.max(10, W-pad*2);
+  const body = Bodies.circle(x, sz+10, sz, { restitution:0.2, friction:0.4, frictionAir:0.01 });
+  body._sz = sz; body._food = food;
   Body.setVelocity(body, { x:(Math.random()-0.5)*2, y:1.5 });
   World.add(engine.world, body);
   physBodies.push({ body, food });
 }
 
-// ══ 画面サイズ変更 ══
 function resizePhysics() {
   const size = getCanvasSize();
-  W = size.W;
-  H = size.H;
-  canvasEl.width  = W;
-  canvasEl.height = H;
+  W = size.W; H = size.H;
+  canvasEl.width = W; canvasEl.height = H;
   rebuildWalls();
   physBodies.forEach(({ body }) => {
     const { x, y } = body.position;
-    Body.setPosition(body, {
-      x: Math.max(50, Math.min(W-50, x)),
-      y: Math.max(50, Math.min(H-50, y)),
-    });
+    Body.setPosition(body, { x:Math.max(50,Math.min(W-50,x)), y:Math.max(50,Math.min(H-50,y)) });
     Body.setVelocity(body, { x:0, y:0 });
   });
 }
 
 window.addEventListener('resize', () => setTimeout(resizePhysics, 350));
 
-// ══ 今日の物理リセット ══
 function reloadTodayPhysics() {
   physBodies.forEach(({ body }) => World.remove(engine.world, body));
   physBodies = [];
-  const items = getDay(todayKey());
-  items.forEach(f => addPhysBody(f));
+  getDay(todayKey()).forEach(f => addPhysBody(f));
   updateTodayStats();
-  document.getElementById('hint-msg').style.display = items.length ? 'none' : '';
+  document.getElementById('hint-msg').style.display = getDay(todayKey()).length ? 'none' : '';
 }
 
-// ══ 統計更新 ══
 function updateTodayStats() {
   const items = getDay(todayKey());
-  const total = items.reduce((a,b) => a + (b.calories||0), 0);
+  const total = items.reduce((a,b)=>a+(b.calories||0),0);
   document.getElementById('stat-count').textContent = items.length;
   document.getElementById('stat-cal').textContent   = total;
   document.getElementById('stat-last').textContent  = items.length ? items[items.length-1].emoji : '—';
 }
 
 // ══════════════════════════════════════
-// タップで食べ物を選択（touchend使用）
+// タップ選択
 // ══════════════════════════════════════
 let touchMoved = false;
-
-canvasEl.addEventListener('touchstart', () => { touchMoved = false; }, { passive:true });
-canvasEl.addEventListener('touchmove',  () => { touchMoved = true;  }, { passive:true });
+canvasEl.addEventListener('touchstart', () => { touchMoved=false; }, { passive:true });
+canvasEl.addEventListener('touchmove',  () => { touchMoved=true;  }, { passive:true });
 canvasEl.addEventListener('touchend', (e) => {
-  if (touchMoved) return; // スワイプは無視
+  if (touchMoved) return;
   e.preventDefault();
-  const touch = e.changedTouches[0];
-  const rect  = canvasEl.getBoundingClientRect();
-  const mx = touch.clientX - rect.left;
-  const my = touch.clientY - rect.top;
-  checkBodyTap(mx, my);
+  const t = e.changedTouches[0];
+  const r = canvasEl.getBoundingClientRect();
+  checkBodyTap(t.clientX-r.left, t.clientY-r.top);
 }, { passive:false });
-
-// PC用クリックも対応
 canvasEl.addEventListener('click', (e) => {
-  const rect = canvasEl.getBoundingClientRect();
-  checkBodyTap(e.clientX - rect.left, e.clientY - rect.top);
+  const r = canvasEl.getBoundingClientRect();
+  checkBodyTap(e.clientX-r.left, e.clientY-r.top);
 });
 
 function checkBodyTap(mx, my) {
-  // 背景タップでメニューを閉じる
   let hit = false;
-  for (let i = physBodies.length - 1; i >= 0; i--) {
+  for (let i=physBodies.length-1; i>=0; i--) {
     const { body, food } = physBodies[i];
     const { x, y } = body.position;
-    const sz = (body._sz || 42) * 1.3;
-    if (Math.sqrt((mx-x)**2 + (my-y)**2) < sz) {
-      showFoodMenu(food);
-      hit = true;
-      break;
+    if (Math.sqrt((mx-x)**2+(my-y)**2) < (body._sz||42)*1.3) {
+      showFoodMenu(food, 'today'); hit=true; break;
     }
   }
   if (!hit) hideFoodMenu();
 }
 
-// ══ 食べ物メニュー ══
-let menuFood = null;
-let menuAutoHide = null;
+// ══════════════════════════════════════
+// FOOD MENU
+// ══════════════════════════════════════
+let menuFood=null, menuAutoHide=null;
 
-function showFoodMenu(food) {
+function showFoodMenu(food, context) {
   menuFood = food;
-  document.getElementById('fm-emoji').textContent = food.emoji || '🍽️';
-  document.getElementById('fm-name').textContent  = food.name  || '';
-  const menuEl = document.getElementById('food-menu');
-  menuEl.classList.add('show');
+  document.getElementById('fm-emoji').textContent = food.emoji||'🍽️';
+  document.getElementById('fm-name').textContent  = food.name||'';
+  document.getElementById('food-menu').classList.add('show');
 
-  // ボタンのイベントを設定
-  document.getElementById('fm-edit').onclick = () => {
-    hideFoodMenu();
-    openEditModal(todayKey(), food.id);
-  };
+  const dateStr = context === 'date' ? currentDateViewKey : todayKey();
+  document.getElementById('fm-edit').onclick = () => { hideFoodMenu(); openEditModal(dateStr, food.id); };
   document.getElementById('fm-delete').onclick = () => {
     hideFoodMenu();
-    deleteItem(todayKey(), food.id);
+    if (context === 'date') deleteDateItem(dateStr, food.id);
+    else deleteItem(dateStr, food.id);
   };
-
   clearTimeout(menuAutoHide);
   menuAutoHide = setTimeout(hideFoodMenu, 5000);
 }
 
 function hideFoodMenu() {
   document.getElementById('food-menu').classList.remove('show');
-  menuFood = null;
-  clearTimeout(menuAutoHide);
+  menuFood=null; clearTimeout(menuAutoHide);
 }
 
 // ══════════════════════════════════════
-// DATE VIEW（過去・未来の日付用物理エンジン）
+// DATE VIEW
 // ══════════════════════════════════════
 const dateEngine   = Engine.create({ gravity:{ x:0, y:1.5 } });
 const dateCanvasEl = document.getElementById('date-world');
 const dateWrapEl   = document.getElementById('date-canvas-wrap');
 const dateCtx      = dateCanvasEl.getContext('2d');
-let dateW = 0, dateH = 0;
-let dateBodies = [];
-let currentDateViewKey = null;
+let dateW=0, dateH=0, dateBodies=[], currentDateViewKey=null;
 
-// 日付ビュー用壁
-let dateWalls = [];
+let dateWalls=[];
 function rebuildDateWalls() {
   if (dateWalls.length) World.remove(dateEngine.world, dateWalls);
   const wo = { isStatic:true, friction:0.5, restitution:0.05 };
   dateWalls = [
-    Bodies.rectangle(dateW/2,        dateH+THICK/2,  dateW+THICK*2, THICK,     wo),
-    Bodies.rectangle(-THICK/2,       dateH/2,        THICK,         dateH*2,   wo),
-    Bodies.rectangle(dateW+THICK/2,  dateH/2,        THICK,         dateH*2,   wo),
-    Bodies.rectangle(dateW/2,        -THICK/2,       dateW+THICK*2, THICK,     wo),
+    Bodies.rectangle(dateW/2,       dateH+THICK/2,  dateW+THICK*2, THICK,    wo),
+    Bodies.rectangle(-THICK/2,      dateH/2,        THICK,         dateH*2,  wo),
+    Bodies.rectangle(dateW+THICK/2, dateH/2,        THICK,         dateH*2,  wo),
+    Bodies.rectangle(dateW/2,       -THICK/2,       dateW+THICK*2, THICK,    wo),
   ];
   World.add(dateEngine.world, dateWalls);
 }
@@ -902,82 +732,59 @@ const dateMouse = Mouse.create(dateCanvasEl);
 const dateMC = MouseConstraint.create(dateEngine, { mouse:dateMouse, constraint:{ stiffness:0.15 } });
 World.add(dateEngine.world, dateMC);
 Runner.run(Runner.create(), dateEngine);
-setupCollisionSounds(dateEngine);
 
-// 日付ビューのタップ
-let dateTouchMoved = false;
-dateCanvasEl.addEventListener('touchstart', () => { dateTouchMoved = false; }, { passive:true });
-dateCanvasEl.addEventListener('touchmove',  () => { dateTouchMoved = true;  }, { passive:true });
+let dateTouchMoved=false;
+dateCanvasEl.addEventListener('touchstart', () => { dateTouchMoved=false; }, { passive:true });
+dateCanvasEl.addEventListener('touchmove',  () => { dateTouchMoved=true;  }, { passive:true });
 dateCanvasEl.addEventListener('touchend', (e) => {
   if (dateTouchMoved) return;
   e.preventDefault();
   const t = e.changedTouches[0];
   const r = dateCanvasEl.getBoundingClientRect();
-  checkDateBodyTap(t.clientX - r.left, t.clientY - r.top);
+  checkDateBodyTap(t.clientX-r.left, t.clientY-r.top);
 }, { passive:false });
 dateCanvasEl.addEventListener('click', (e) => {
   const r = dateCanvasEl.getBoundingClientRect();
-  checkDateBodyTap(e.clientX - r.left, e.clientY - r.top);
+  checkDateBodyTap(e.clientX-r.left, e.clientY-r.top);
 });
 
 function checkDateBodyTap(mx, my) {
-  let hit = false;
-  for (let i = dateBodies.length-1; i >= 0; i--) {
+  let hit=false;
+  for (let i=dateBodies.length-1; i>=0; i--) {
     const { body, food } = dateBodies[i];
     const { x, y } = body.position;
     if (Math.sqrt((mx-x)**2+(my-y)**2) < (body._sz||42)*1.3) {
-      showDateFoodMenu(food);
-      hit = true; break;
+      showFoodMenu(food, 'date'); hit=true; break;
     }
   }
   if (!hit) hideFoodMenu();
 }
 
-function showDateFoodMenu(food) {
-  menuFood = food;
-  document.getElementById('fm-emoji').textContent = food.emoji || '🍽️';
-  document.getElementById('fm-name').textContent  = food.name  || '';
-  document.getElementById('food-menu').classList.add('show');
-  document.getElementById('fm-edit').onclick = () => {
-    hideFoodMenu();
-    openEditModal(currentDateViewKey, food.id);
-  };
-  document.getElementById('fm-delete').onclick = () => {
-    hideFoodMenu();
-    deleteDateItem(currentDateViewKey, food.id);
-  };
-  clearTimeout(menuAutoHide);
-  menuAutoHide = setTimeout(hideFoodMenu, 5000);
-}
-
 function deleteDateItem(dateStr, itemId) {
   if (!confirm('削除しますか？')) return;
-  let items = getDay(dateStr).filter(i => i.id !== itemId);
-  saveDay(dateStr, items);
+  saveDay(dateStr, getDay(dateStr).filter(i=>i.id!==itemId));
   reloadDatePhysics(dateStr);
   renderCalendar();
   showToast('🗑️ 削除しました');
 }
 
-// 日付ビューの描画ループ
 function dateDraw() {
   requestAnimationFrame(dateDraw);
   dateCtx.clearRect(0, 0, dateCanvasEl.width, dateCanvasEl.height);
   dateBodies.forEach(({ body, food }) => {
-    if (!body || !food) return;
+    if (!body||!food) return;
     const { x, y } = body.position;
-    if (x < -200 || x > dateW+200 || y < -200 || y > dateH+200) return;
-    drawCircleItem(dateCtx, food, x, y, body.angle, body._sz || 42);
+    if (x<-200||x>dateW+200||y<-200||y>dateH+200) return;
+    drawCircleItem(dateCtx, food, x, y, body.angle, body._sz||42);
   });
 }
 dateDraw();
 
 function addDatePhysBody(food) {
-  const sz  = 32 + Math.random() * 12;
-  const pad = sz + 20;
-  const x   = pad + Math.random() * Math.max(10, dateW - pad*2);
-  const body = Bodies.circle(x, sz+10, sz, { restitution:0.2, friction:0.4, frictionAir:0.01 });
-  body._sz = sz; body._food = food;
+  const sz=32+Math.random()*12, pad=sz+20;
+  const x=pad+Math.random()*Math.max(10,dateW-pad*2);
+  const body=Bodies.circle(x, sz+10, sz, { restitution:0.2, friction:0.4, frictionAir:0.01 });
+  body._sz=sz; body._food=food;
   Body.setVelocity(body, { x:(Math.random()-0.5)*2, y:1.5 });
   World.add(dateEngine.world, body);
   dateBodies.push({ body, food });
@@ -985,188 +792,124 @@ function addDatePhysBody(food) {
 
 function reloadDatePhysics(dateStr) {
   dateBodies.forEach(({ body }) => World.remove(dateEngine.world, body));
-  dateBodies = [];
-  const items = getDay(dateStr);
-  items.forEach(f => addDatePhysBody(f));
+  dateBodies=[];
+  getDay(dateStr).forEach(f=>addDatePhysBody(f));
   updateDateStats(dateStr);
-  document.getElementById('date-hint-msg').style.display = items.length ? 'none' : '';
+  document.getElementById('date-hint-msg').style.display = getDay(dateStr).length ? 'none' : '';
 }
 
 function updateDateStats(dateStr) {
-  const items = getDay(dateStr);
-  const total = items.reduce((a,b)=>a+(b.calories||0), 0);
+  const items=getDay(dateStr);
   document.getElementById('date-stat-count').textContent = items.length;
-  document.getElementById('date-stat-cal').textContent   = total;
+  document.getElementById('date-stat-cal').textContent   = items.reduce((a,b)=>a+(b.calories||0),0);
 }
 
 function resizeDatePhysics() {
-  const r = dateWrapEl.getBoundingClientRect();
-  dateW = Math.floor(r.width)  || window.innerWidth;
-  dateH = Math.floor(r.height) || 400;
-  dateCanvasEl.width  = dateW;
-  dateCanvasEl.height = dateH;
+  const r=dateWrapEl.getBoundingClientRect();
+  dateW=Math.floor(r.width)||window.innerWidth;
+  dateH=Math.floor(r.height)||400;
+  dateCanvasEl.width=dateW; dateCanvasEl.height=dateH;
   rebuildDateWalls();
   dateBodies.forEach(({ body }) => {
-    const { x, y } = body.position;
+    const { x, y }=body.position;
     Body.setPosition(body, { x:Math.max(50,Math.min(dateW-50,x)), y:Math.max(50,Math.min(dateH-50,y)) });
     Body.setVelocity(body, { x:0, y:0 });
   });
 }
 
-// ══ カメラUI ══
-let cameraStream   = null;
-let cameraTarget   = 'today'; // 'today' or 'date'
+// ══════════════════════════════════════
+// カメラUI
+// ══════════════════════════════════════
+let cameraStream=null, cameraTarget='today';
 
 function triggerFileInput(target) {
-  // カメラが使える場合はカメラUI、使えない場合はファイル選択
-  cameraTarget = target;
+  cameraTarget=target;
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     openCameraUI();
   } else {
-    // フォールバック: ファイル選択
-    const inp = document.getElementById('shared-file-input');
-    inp.value = '';
-    inp.click();
+    const inp=document.getElementById('shared-file-input');
+    inp.value=''; inp.click();
   }
 }
 
 function openCameraUI() {
-  const ui = document.getElementById('camera-ui');
-  ui.style.display = 'flex';
-
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-  }).then(stream => {
-    cameraStream = stream;
-    const video = document.getElementById('camera-video');
-    video.srcObject = stream;
-    video.play();
-    // オーバーレイ描画開始
-    requestAnimationFrame(drawCameraOverlay);
-  }).catch(() => {
-    closeCameraUI();
-    // フォールバック
-    const inp = document.getElementById('shared-file-input');
-    inp.value = ''; inp.click();
-  });
+  document.getElementById('camera-ui').style.display='flex';
+  navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} } })
+    .then(stream => {
+      cameraStream=stream;
+      const v=document.getElementById('camera-video');
+      v.srcObject=stream; v.play();
+      requestAnimationFrame(drawCameraOverlay);
+    }).catch(() => {
+      closeCameraUI();
+      const inp=document.getElementById('shared-file-input');
+      inp.value=''; inp.click();
+    });
 }
 
 function drawCameraOverlay() {
-  const ui = document.getElementById('camera-ui');
-  if (!cameraStream || ui.style.display === 'none') return;
-
-  const canvas  = document.getElementById('camera-overlay');
-  const video   = document.getElementById('camera-video');
-  const w = video.offsetWidth;
-  const h = video.offsetHeight;
-  if (w === 0 || h === 0) { requestAnimationFrame(drawCameraOverlay); return; }
-
-  canvas.width  = w;
-  canvas.height = h;
-  const ctx2 = canvas.getContext('2d');
-
-  const radius = Math.min(w, h) * 0.42;
-  const cx = w / 2;
-  const cy = h / 2;
-
-  ctx2.clearRect(0, 0, w, h);
-
-  // 暗いオーバーレイ（丸い穴を開ける）
-  ctx2.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx2.fillRect(0, 0, w, h);
-  ctx2.globalCompositeOperation = 'destination-out';
-  ctx2.beginPath();
-  ctx2.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx2.fill();
-  ctx2.globalCompositeOperation = 'source-over';
-
-  // 丸い枠線（白）
-  ctx2.beginPath();
-  ctx2.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx2.strokeStyle = 'rgba(255,255,255,0.9)';
-  ctx2.lineWidth = 3;
-  ctx2.stroke();
-
+  const ui=document.getElementById('camera-ui');
+  if (!cameraStream||ui.style.display==='none') return;
+  const canvas=document.getElementById('camera-overlay');
+  const video=document.getElementById('camera-video');
+  const w=video.offsetWidth, h=video.offsetHeight;
+  if (!w||!h) { requestAnimationFrame(drawCameraOverlay); return; }
+  canvas.width=w; canvas.height=h;
+  const c2=canvas.getContext('2d');
+  const r=Math.min(w,h)*0.42, cx=w/2, cy=h/2;
+  c2.clearRect(0,0,w,h);
+  c2.fillStyle='rgba(0,0,0,0.55)';
+  c2.fillRect(0,0,w,h);
+  c2.globalCompositeOperation='destination-out';
+  c2.beginPath(); c2.arc(cx,cy,r,0,Math.PI*2); c2.fill();
+  c2.globalCompositeOperation='source-over';
+  c2.beginPath(); c2.arc(cx,cy,r,0,Math.PI*2);
+  c2.strokeStyle='rgba(255,255,255,0.9)'; c2.lineWidth=3; c2.stroke();
   requestAnimationFrame(drawCameraOverlay);
 }
 
 function closeCameraUI() {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach(t => t.stop());
-    cameraStream = null;
-  }
-  document.getElementById('camera-ui').style.display = 'none';
+  if (cameraStream) { cameraStream.getTracks().forEach(t=>t.stop()); cameraStream=null; }
+  document.getElementById('camera-ui').style.display='none';
 }
 
 function takePhoto() {
-  const video  = document.getElementById('camera-video');
-  const w = video.videoWidth;
-  const h = video.videoHeight;
-  if (!w || !h) return;
-
-  // 画面上の円の大きさをvideo座標に変換
-  const displayW   = video.offsetWidth;
-  const displayH   = video.offsetHeight;
-  const scaleX = w / displayW;
-  const scaleY = h / displayH;
-  const radius     = Math.min(displayW, displayH) * 0.42;
-  const cx = displayW / 2;
-  const cy = displayH / 2;
-
-  // 丸い部分だけを切り抜いてcanvasに描画
-  const size = Math.round(radius * 2 * Math.max(scaleX, scaleY));
-  const offscreen = document.createElement('canvas');
-  offscreen.width  = size;
-  offscreen.height = size;
-  const oc = offscreen.getContext('2d');
-
-  // 円形クリップ
-  oc.beginPath();
-  oc.arc(size/2, size/2, size/2, 0, Math.PI * 2);
-  oc.clip();
-
-  // videoから円の範囲だけ切り取って描画
-  const srcX = Math.round((cx - radius) * scaleX);
-  const srcY = Math.round((cy - radius) * scaleY);
-  const srcS = Math.round(radius * 2 * Math.max(scaleX, scaleY));
+  const video=document.getElementById('camera-video');
+  const vw=video.videoWidth, vh=video.videoHeight;
+  if (!vw||!vh) return;
+  const dw=video.offsetWidth, dh=video.offsetHeight;
+  const sx=vw/dw, sy=vh/dh;
+  const r=Math.min(dw,dh)*0.42;
+  const size=Math.round(r*2*Math.max(sx,sy));
+  const off=document.createElement('canvas');
+  off.width=off.height=size;
+  const oc=off.getContext('2d');
+  oc.beginPath(); oc.arc(size/2,size/2,size/2,0,Math.PI*2); oc.clip();
+  const srcX=Math.round((dw/2-r)*sx), srcY=Math.round((dh/2-r)*sy);
+  const srcS=Math.round(r*2*Math.max(sx,sy));
   oc.drawImage(video, srcX, srcY, srcS, srcS, 0, 0, size, size);
-
-  const base64 = offscreen.toDataURL('image/jpeg', 0.85).split(',')[1];
-
+  const base64=off.toDataURL('image/jpeg',0.85).split(',')[1];
   closeCameraUI();
-
-  // 食べ物データとして追加（AIなし・写真そのまま）
-  const food = {
-    name:        '📸 写真',
-    emoji:       '📸',
-    calories:    0,
-    color:       '#d4622a',
-    shape:       'circle',
-    photoBase64: base64,
-  };
-
-  if (cameraTarget === 'date') {
-    addDateFoodItem(food);
-  } else {
-    addFoodItem(food);
-  }
+  const food={ name:'📸 写真', emoji:'📸', calories:0, color:'#d4622a', shape:'circle', photoBase64:base64 };
+  if (cameraTarget==='date') addDateFoodItem(food);
+  else addFoodItem(food);
   showToast('📸 写真を追加しました！');
 }
 
+// ══════════════════════════════════════
+// FILE / AI
+// ══════════════════════════════════════
 async function handleSharedFile(e) {
-  const file = e.target.files[0]; if (!file) return;
-  e.target.value = '';
+  const file=e.target.files[0]; if (!file) return;
+  e.target.value='';
   document.getElementById('loading').classList.add('show');
   try {
-    const b64  = await toBase64(file);
-    const food = await analyzeFood(b64);
-    // 写真を丸くコロコロさせるためbase64を保存
-    food.photoBase64 = b64;
-    if (fileInputTarget === 'date') {
-      addDateFoodItem(food);
-    } else {
-      addFoodItem(food);
-    }
+    const b64=await toBase64(file);
+    const food=await analyzeFood(b64);
+    food.photoBase64=b64;
+    // ★ バグ修正: fileInputTarget → cameraTarget に統一
+    if (cameraTarget==='date') addDateFoodItem(food);
+    else addFoodItem(food);
     showToast(`🍴 ${food.name} を追加しました！`);
   } catch(err) {
     console.error(err);
@@ -1176,113 +919,80 @@ async function handleSharedFile(e) {
   }
 }
 
-function addDateFoodItem(food) {
-  if (!currentDateViewKey) return;
-  const items = getDay(currentDateViewKey);
-  const item  = { id:Date.now(), shape:'circle', ...food };
-  items.push(item);
-  saveDay(currentDateViewKey, items);
-  addDatePhysBody(item);
-  document.getElementById('date-hint-msg').style.display = 'none';
-  updateDateStats(currentDateViewKey);
-  renderCalendar();
-  playSound('add');
-  maybeShowAd();
-}
-
-// 日付ビューを開く
-function openDateView(ds) {
-  currentDateViewKey = ds;
-  const [y,m,d] = ds.split('-');
-  document.getElementById('date-view-label').textContent = `${parseInt(y)}年${parseInt(m)}月${parseInt(d)}日`;
-  showView('date');
-  setTimeout(() => {
-    resizeDatePhysics();
-    reloadDatePhysics(ds);
-  }, 80);
-}
-function showView(name) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('view-'+name).classList.add('active');
-  if (name === 'today') {
-    document.querySelectorAll('.nav-tab')[0].classList.add('active');
-    setTimeout(() => { resizePhysics(); updateTodayStats(); }, 50);
-  } else if (name === 'calendar') {
-    document.querySelectorAll('.nav-tab')[1].classList.add('active');
-    renderCalendar();
-  }
-  // date viewはタブ選択なし
-}
-
-// ══════════════════════════════════════
-// FILE / AI
-// ══════════════════════════════════════
-
 function toBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload  = () => res(r.result.split(',')[1]);
-    r.onerror = rej;
+  return new Promise((res,rej) => {
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=rej;
     r.readAsDataURL(file);
   });
 }
 
 async function analyzeFood(b64) {
-  const prompt = `この料理の写真を見て、以下のJSON形式のみで答えてください。前後に余分な文字は一切不要です。
+  const prompt=`この料理の写真を見て、以下のJSON形式のみで答えてください。前後に余分な文字は一切不要です。
 {"name":"料理名(日本語,短く)","emoji":"絵文字1文字","calories":推定kcal整数,"color":"#rrggbb","shape":"circle"}
 shapeはすべてcircleでOKです。`;
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 200,
-      messages: [{ role:'user', content:[
-        { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } },
-        { type:'text', text:prompt }
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:200,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
+        {type:'text',text:prompt}
       ]}]
     })
   });
-  const data = await res.json();
-  const txt  = data.content.map(i => i.text||'').join('');
-  const json = txt.match(/\{[\s\S]*\}/);
+  const data=await res.json();
+  const txt=data.content.map(i=>i.text||'').join('');
+  const json=txt.match(/\{[\s\S]*\}/);
   if (!json) throw new Error('JSON not found');
   return JSON.parse(json[0]);
 }
 
 function addFoodItem(food) {
-  const items = getDay(todayKey());
-  const item  = { id: Date.now(), shape:'circle', ...food };
+  const items=getDay(todayKey());
+  const item={id:Date.now(),shape:'circle',...food};
   items.push(item);
-  saveDay(todayKey(), items);
+  saveDay(todayKey(),items);
   addPhysBody(item);
-  document.getElementById('hint-msg').style.display = 'none';
+  document.getElementById('hint-msg').style.display='none';
   updateTodayStats();
-  playSound('add');
+  maybeShowAd();
+}
+
+function addDateFoodItem(food) {
+  if (!currentDateViewKey) return;
+  const items=getDay(currentDateViewKey);
+  const item={id:Date.now(),shape:'circle',...food};
+  items.push(item);
+  saveDay(currentDateViewKey,items);
+  addDatePhysBody(item);
+  document.getElementById('date-hint-msg').style.display='none';
+  updateDateStats(currentDateViewKey);
+  renderCalendar();
   maybeShowAd();
 }
 
 // ══════════════════════════════════════
-// MANUAL MODAL（今日 or 過去未来共用）
+// MANUAL MODAL
 // ══════════════════════════════════════
-const EMOJIS = ['🍙','🍱','🍜','🍣','🍛','🍔','🍕','🥗','🍰','🥩','🍳','🥞','🍞','🥪','🌮','🥘','🍲','🍝','🧆','🍦','☕','🥤','🍺','🍷'];
-let pickerEmoji = { manual:'🍙', edit:'🍙', past:'🍙' };
-let manualTargetDate = null; // null = 今日, 文字列 = 指定日
+const EMOJIS=['🍙','🍱','🍜','🍣','🍛','🍔','🍕','🥗','🍰','🥩','🍳','🥞','🍞','🥪','🌮','🥘','🍲','🍝','🧆','🍦','☕','🥤','🍺','🍷'];
+let pickerEmoji={ manual:'🍙', edit:'🍙' };
+let manualTargetDate=null;
 
 function buildPicker(containerId, key, initial) {
-  pickerEmoji[key] = initial || '🍙';
-  const c = document.getElementById(containerId);
-  c.innerHTML = '';
+  pickerEmoji[key]=initial||'🍙';
+  const c=document.getElementById(containerId);
+  c.innerHTML='';
   EMOJIS.forEach(em => {
-    const b = document.createElement('button');
-    b.className = 'emoji-opt' + (em === pickerEmoji[key] ? ' selected' : '');
-    b.textContent = em;
-    b.type = 'button';
-    b.onclick = () => {
-      pickerEmoji[key] = em;
-      c.querySelectorAll('.emoji-opt').forEach(x => x.classList.remove('selected'));
+    const b=document.createElement('button');
+    b.className='emoji-opt'+(em===pickerEmoji[key]?' selected':'');
+    b.textContent=em; b.type='button';
+    b.onclick=()=>{
+      pickerEmoji[key]=em;
+      c.querySelectorAll('.emoji-opt').forEach(x=>x.classList.remove('selected'));
       b.classList.add('selected');
     };
     c.appendChild(b);
@@ -1290,52 +1000,44 @@ function buildPicker(containerId, key, initial) {
 }
 
 function openManualModal(targetDate) {
-  manualTargetDate = targetDate || null;
-  document.getElementById('m-name').value  = '';
-  document.getElementById('m-cal').value   = '';
-  document.getElementById('m-color').value = '#d4622a';
-  buildPicker('manual-emoji-picker', 'manual', '🍙');
-  // タイトルを日付に応じて変える
-  const dateStr = manualTargetDate || todayKey();
-  const [y,mo,d] = dateStr.split('-');
-  document.querySelector('#manual-modal h3').textContent =
-    `✏️ ${parseInt(y)}年${parseInt(mo)}月${parseInt(d)}日に追加`;
+  manualTargetDate=targetDate||null;
+  document.getElementById('m-name').value='';
+  document.getElementById('m-cal').value='';
+  document.getElementById('m-color').value='#d4622a';
+  buildPicker('manual-emoji-picker','manual','🍙');
+  const ds=manualTargetDate||todayKey();
+  const [y,mo,d]=ds.split('-');
+  document.querySelector('#manual-modal h3').textContent=`✏️ ${parseInt(y)}年${parseInt(mo)}月${parseInt(d)}日に追加`;
   document.getElementById('manual-modal').classList.add('open');
-  setTimeout(() => document.getElementById('m-name').focus(), 100);
+  setTimeout(()=>document.getElementById('m-name').focus(),100);
 }
 function closeManualModal() {
   document.getElementById('manual-modal').classList.remove('open');
-  manualTargetDate = null;
+  manualTargetDate=null;
 }
 
 function submitManual() {
-  const name = document.getElementById('m-name').value.trim();
+  const name=document.getElementById('m-name').value.trim();
   if (!name) { showToast('料理名を入力してください'); return; }
-  const cal   = parseInt(document.getElementById('m-cal').value) || 0;
-  const color = document.getElementById('m-color').value;
-  const food  = { name, emoji:pickerEmoji.manual, calories:cal, color, shape:'circle' };
+  const cal=parseInt(document.getElementById('m-cal').value)||0;
+  const color=document.getElementById('m-color').value;
+  const food={name,emoji:pickerEmoji.manual,calories:cal,color,shape:'circle'};
+  const targetDate=manualTargetDate||todayKey();
+  const items=getDay(targetDate);
+  const item={id:Date.now(),...food};
+  items.push(item); saveDay(targetDate,items);
 
-  const targetDate = manualTargetDate || todayKey();
-  const items = getDay(targetDate);
-  const item  = { id: Date.now(), ...food };
-  items.push(item);
-  saveDay(targetDate, items);
-
-  // 今日なら物理に追加
-  if (targetDate === todayKey()) {
+  if (targetDate===todayKey()) {
     addPhysBody(item);
-    document.getElementById('hint-msg').style.display = 'none';
+    document.getElementById('hint-msg').style.display='none';
     updateTodayStats();
-  } else if (targetDate === currentDateViewKey) {
+  } else if (targetDate===currentDateViewKey) {
     addDatePhysBody(item);
-    document.getElementById('date-hint-msg').style.display = 'none';
+    document.getElementById('date-hint-msg').style.display='none';
     updateDateStats(targetDate);
   }
-
-  // カレンダーと詳細を更新
   renderCalendar();
-  if (currentDetailDate === targetDate) renderDayDetail(targetDate);
-
+  if (currentDetailDate===targetDate) renderDayDetail(targetDate);
   closeManualModal();
   showToast(`✅ ${name} を追加しました！`);
 }
@@ -1343,41 +1045,37 @@ function submitManual() {
 // ══════════════════════════════════════
 // EDIT MODAL
 // ══════════════════════════════════════
-let editCtx = null; // { dateStr, itemId }
+let editCtx=null;
 
 function openEditModal(dateStr, itemId) {
-  const item = getDay(dateStr).find(i => i.id === itemId);
+  const item=getDay(dateStr).find(i=>i.id===itemId);
   if (!item) { showToast('データが見つかりません'); return; }
-  editCtx = { dateStr, itemId };
-  document.getElementById('e-name').value  = item.name || '';
-  document.getElementById('e-cal').value   = item.calories || '';
-  document.getElementById('e-color').value = item.color || '#d4622a';
-  buildPicker('edit-emoji-picker', 'edit', item.emoji || '🍙');
+  editCtx={dateStr,itemId};
+  document.getElementById('e-name').value  = item.name||'';
+  document.getElementById('e-cal').value   = item.calories||'';
+  document.getElementById('e-color').value = item.color||'#d4622a';
+  buildPicker('edit-emoji-picker','edit',item.emoji||'🍙');
   document.getElementById('edit-modal').classList.add('open');
 }
 function closeEditModal() {
   document.getElementById('edit-modal').classList.remove('open');
-  editCtx = null;
+  editCtx=null;
 }
-
 function submitEdit() {
   if (!editCtx) return;
-  const { dateStr, itemId } = editCtx;
-  const items = getDay(dateStr);
-  const idx   = items.findIndex(i => i.id === itemId);
-  if (idx === -1) return;
-
-  items[idx] = {
-    ...items[idx],
-    name:     document.getElementById('e-name').value.trim() || items[idx].name,
-    calories: parseInt(document.getElementById('e-cal').value) || items[idx].calories,
-    emoji:    pickerEmoji.edit,
-    color:    document.getElementById('e-color').value,
+  const { dateStr, itemId }=editCtx;
+  const items=getDay(dateStr);
+  const idx=items.findIndex(i=>i.id===itemId);
+  if (idx===-1) return;
+  items[idx]={...items[idx],
+    name:    document.getElementById('e-name').value.trim()||items[idx].name,
+    calories:parseInt(document.getElementById('e-cal').value)||items[idx].calories,
+    emoji:   pickerEmoji.edit,
+    color:   document.getElementById('e-color').value,
   };
-  saveDay(dateStr, items);
-
-  if (dateStr === todayKey()) reloadTodayPhysics();
-  else if (dateStr === currentDateViewKey) reloadDatePhysics(dateStr);
+  saveDay(dateStr,items);
+  if (dateStr===todayKey()) reloadTodayPhysics();
+  else if (dateStr===currentDateViewKey) reloadDatePhysics(dateStr);
   if (document.getElementById('day-detail').classList.contains('open')) renderDayDetail(dateStr);
   renderCalendar();
   closeEditModal();
@@ -1389,9 +1087,9 @@ function submitEdit() {
 // ══════════════════════════════════════
 function deleteItem(dateStr, itemId) {
   if (!confirm('削除しますか？')) return;
-  let items = getDay(dateStr).filter(i => i.id !== itemId);
-  saveDay(dateStr, items);
-  if (dateStr === todayKey()) reloadTodayPhysics();
+  const items=getDay(dateStr).filter(i=>i.id!==itemId);
+  saveDay(dateStr,items);
+  if (dateStr===todayKey()) reloadTodayPhysics();
   if (document.getElementById('day-detail').classList.contains('open')) {
     items.length ? renderDayDetail(dateStr) : closeDayDetail();
   }
@@ -1402,58 +1100,42 @@ function deleteItem(dateStr, itemId) {
 // ══════════════════════════════════════
 // CALENDAR
 // ══════════════════════════════════════
-let calDate = new Date();
+let calDate=new Date();
 
 function changeMonth(d) {
-  calDate = new Date(calDate.getFullYear(), calDate.getMonth()+d, 1);
+  calDate=new Date(calDate.getFullYear(), calDate.getMonth()+d, 1);
   renderCalendar();
 }
-
 function renderCalendar() {
-  const year  = calDate.getFullYear();
-  const month = calDate.getMonth();
-  document.getElementById('cal-month-label').textContent = `${year}年 ${month+1}月`;
-
-  const firstDay = new Date(year, month, 1).getDay();
-  const lastDate  = new Date(year, month+1, 0).getDate();
-  const store     = getStore();
-  const grid      = document.getElementById('cal-grid');
-  grid.innerHTML  = '';
-
-  for (let i=0; i<firstDay; i++) {
-    const c = document.createElement('div');
-    c.className = 'cal-cell empty';
-    grid.appendChild(c);
+  const year=calDate.getFullYear(), month=calDate.getMonth();
+  document.getElementById('cal-month-label').textContent=`${year}年 ${month+1}月`;
+  const firstDay=new Date(year,month,1).getDay();
+  const lastDate=new Date(year,month+1,0).getDate();
+  const store=getStore();
+  const grid=document.getElementById('cal-grid');
+  grid.innerHTML='';
+  for (let i=0;i<firstDay;i++) {
+    const c=document.createElement('div'); c.className='cal-cell empty'; grid.appendChild(c);
   }
-  for (let d=1; d<=lastDate; d++) {
-    const ds    = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const items = store[ds] || [];
-    const cell  = document.createElement('div');
-    cell.className = 'cal-cell' + (ds===todayKey()?' today':'') + (items.length?' has-data':'');
-
-    const num = document.createElement('div');
-    num.className = 'cal-day-num';
-    num.textContent = d;
-    cell.appendChild(num);
-
+  for (let d=1;d<=lastDate;d++) {
+    const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const items=store[ds]||[];
+    const cell=document.createElement('div');
+    cell.className='cal-cell'+(ds===todayKey()?' today':'');
+    const num=document.createElement('div');
+    num.className='cal-day-num'; num.textContent=d; cell.appendChild(num);
     if (items.length) {
-      const em = document.createElement('div');
-      em.className = 'cal-emojis';
-      em.textContent = items.slice(0,4).map(i=>i.emoji).join('');
+      const em=document.createElement('div');
+      em.className='cal-emojis';
+      em.textContent=items.slice(0,4).map(i=>i.emoji).join('');
       cell.appendChild(em);
-
-      const kc = document.createElement('div');
-      kc.className = 'cal-kcal';
-      kc.textContent = items.reduce((a,b)=>a+(b.calories||0),0) + 'kcal';
+      const kc=document.createElement('div');
+      kc.className='cal-kcal';
+      kc.textContent=items.reduce((a,b)=>a+(b.calories||0),0)+'kcal';
       cell.appendChild(kc);
     }
-
-    // 全日付タップで開く（今日はtodayビュー、それ以外はdateビュー）
-    if (ds === todayKey()) {
-      cell.onclick = () => showView('today');
-    } else {
-      cell.onclick = () => openDateView(ds);
-    }
+    if (ds===todayKey()) cell.onclick=()=>showView('today');
+    else cell.onclick=()=>openDateView(ds);
     grid.appendChild(cell);
   }
 }
@@ -1461,35 +1143,33 @@ function renderCalendar() {
 // ══════════════════════════════════════
 // DAY DETAIL
 // ══════════════════════════════════════
-let currentDetailDate = null;
+let currentDetailDate=null;
 
 function openDayDetail(ds) {
-  currentDetailDate = ds;
+  currentDetailDate=ds;
   renderDayDetail(ds);
   document.getElementById('day-detail').classList.add('open');
 }
 function closeDayDetail() {
   document.getElementById('day-detail').classList.remove('open');
-  currentDetailDate = null;
+  currentDetailDate=null;
 }
-
 function openPastAddModal() {
   if (!currentDetailDate) return;
   closeDayDetail();
-  setTimeout(() => openManualModal(currentDetailDate), 200);
+  setTimeout(()=>openManualModal(currentDetailDate),200);
 }
 function renderDayDetail(ds) {
-  const items = getDay(ds);
-  const [y,m,d] = ds.split('-');
-  document.getElementById('day-detail-title').textContent = `📅 ${y}年${parseInt(m)}月${parseInt(d)}日の食事`;
-
-  const total = items.reduce((a,b)=>a+(b.calories||0),0);
-  document.getElementById('day-detail-summary').innerHTML = `
+  const items=getDay(ds);
+  const [y,m,d]=ds.split('-');
+  document.getElementById('day-detail-title').textContent=`📅 ${y}年${parseInt(m)}月${parseInt(d)}日の食事`;
+  const total=items.reduce((a,b)=>a+(b.calories||0),0);
+  document.getElementById('day-detail-summary').innerHTML=`
     <div class="ds-stat"><div class="ds-num">${items.length}</div><div class="ds-lbl">食事数</div></div>
     <div class="ds-stat"><div class="ds-num">${total}</div><div class="ds-lbl">総kcal</div></div>
     <div class="ds-stat"><div class="ds-num">${items.length?Math.round(total/items.length):0}</div><div class="ds-lbl">平均kcal</div></div>
   `;
-  document.getElementById('day-detail-list').innerHTML = items.map(item => `
+  document.getElementById('day-detail-list').innerHTML=items.map(item=>`
     <div class="detail-item">
       <div class="detail-emoji">${item.emoji||'🍽️'}</div>
       <div class="detail-info">
@@ -1502,220 +1182,169 @@ function renderDayDetail(ds) {
       </div>
     </div>
   `).join('');
-
-  // イベントをdelegationで設定
-  document.getElementById('day-detail-list').onclick = (e) => {
-    const editBtn = e.target.closest('[data-edit]');
-    const delBtn  = e.target.closest('[data-del]');
-    if (editBtn) {
-      const [dateStr, id] = editBtn.dataset.edit.split(':');
-      openEditModal(dateStr, parseInt(id));
-    }
-    if (delBtn) {
-      const [dateStr, id] = delBtn.dataset.del.split(':');
-      deleteItem(dateStr, parseInt(id));
-    }
+  document.getElementById('day-detail-list').onclick=(e)=>{
+    const eb=e.target.closest('[data-edit]');
+    const db=e.target.closest('[data-del]');
+    if (eb) { const [ds2,id]=eb.dataset.edit.split(':'); openEditModal(ds2,parseInt(id)); }
+    if (db) { const [ds2,id]=db.dataset.del.split(':');  deleteItem(ds2,parseInt(id)); }
   };
+}
+
+// ══════════════════════════════════════
+// VIEW SWITCH
+// ══════════════════════════════════════
+function openDateView(ds) {
+  currentDateViewKey=ds;
+  const [y,m,d]=ds.split('-');
+  document.getElementById('date-view-label').textContent=`${parseInt(y)}年${parseInt(m)}月${parseInt(d)}日`;
+  showView('date');
+  setTimeout(()=>{ resizeDatePhysics(); reloadDatePhysics(ds); },80);
+}
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  if (name==='today') {
+    document.querySelectorAll('.nav-tab')[0].classList.add('active');
+    setTimeout(()=>{ resizePhysics(); updateTodayStats(); },50);
+  } else if (name==='calendar') {
+    document.querySelectorAll('.nav-tab')[1].classList.add('active');
+    renderCalendar();
+  }
 }
 
 // ══════════════════════════════════════
 // GYROSCOPE
 // ══════════════════════════════════════
-let gyroEnabled  = false;
+let gyroEnabled=false, smoothGX=0, smoothGY=1.5;
 
 function syncGyroBtn() {
-  ['gyro-btn','gyro-btn2'].forEach(id => {
-    const btn = document.getElementById(id);
+  ['gyro-btn','gyro-btn2'].forEach(id=>{
+    const btn=document.getElementById(id);
     if (!btn) return;
-    btn.classList.toggle('gyro-on', gyroEnabled);
-    btn.textContent = gyroEnabled ? '🌀' : '📱';
+    btn.classList.toggle('gyro-on',gyroEnabled);
+    btn.textContent=gyroEnabled?'🌀':'📱';
   });
 }
-
 function requestGyro() {
-  // DeviceMotionEventを使う（加速度センサーで直接重力ベクトルを取得）
-  if (typeof DeviceMotionEvent !== 'undefined' &&
-      typeof DeviceMotionEvent.requestPermission === 'function') {
-    // iOS 13+ は許可が必要
+  if (typeof DeviceMotionEvent!=='undefined' && typeof DeviceMotionEvent.requestPermission==='function') {
     DeviceMotionEvent.requestPermission()
-      .then(s => s === 'granted' ? enableGyro() : showToast('❌ センサーの許可が必要です'))
-      .catch(() => showToast('❌ センサーが使えません'));
+      .then(s=>s==='granted'?enableGyro():showToast('❌ センサーの許可が必要です'))
+      .catch(()=>showToast('❌ センサーが使えません'));
   } else if ('DeviceMotionEvent' in window) {
     enableGyro();
   } else {
     showToast('❌ このデバイスはセンサー非対応です');
   }
 }
-
 function enableGyro() {
   if (gyroEnabled) {
-    gyroEnabled = false;
-    window.removeEventListener('devicemotion', handleMotion);
-    engine.gravity.x = 0;     engine.gravity.y = 1.5;
-    dateEngine.gravity.x = 0; dateEngine.gravity.y = 1.5;
-    syncGyroBtn();
-    showToast('📱 ジャイロ OFF');
-    return;
+    gyroEnabled=false;
+    window.removeEventListener('devicemotion',handleMotion);
+    engine.gravity.x=0; engine.gravity.y=1.5;
+    dateEngine.gravity.x=0; dateEngine.gravity.y=1.5;
+    syncGyroBtn(); showToast('📱 ジャイロ OFF'); return;
   }
-  gyroEnabled = true;
-  window.addEventListener('devicemotion', handleMotion);
-  syncGyroBtn();
-  showToast('🌀 ジャイロ ON！傾けてみて！');
+  gyroEnabled=true;
+  window.addEventListener('devicemotion',handleMotion);
+  syncGyroBtn(); showToast('🌀 ジャイロ ON！傾けてみて！');
 }
-
-// 平滑化用
-let smoothGX = 0;
-let smoothGY = 1.5;
-
 function handleMotion(e) {
   if (!gyroEnabled) return;
-  const ag = e.accelerationIncludingGravity;
-  if (!ag) return;
-
-  // iPhoneを縦に持った時のaccelerationIncludingGravity実測値:
-  //   x ≈  0    (左右中立)
-  //   y ≈ -9.8  (縦持ちで重力がy負方向にかかる)
-  //   z ≈  0
-  //
-  // 欲しい動作:
-  //   右に傾ける  → gx正（右に転がる）  → ag.xが負になる → rawGX = -ag.x/9.8
-  //   左に傾ける  → gx負（左に転がる）  → ag.xが正になる → rawGX = -ag.x/9.8
-  //   下部を下に  → gy正（下に転がる）  → ag.yが負のまま変化 → rawGY = -ag.y/9.8
-  //   上部を下に  → gy負（上に転がる）  → ag.yが正に近づく  → rawGY = -ag.y/9.8
-  //   机に水平    → gy≈0（ほぼ止まる）  → ag.y≈0           → rawGY ≈ 0
-
-  const rawGX =  (ag.x ?? 0) / 9.8 * 2.5; // 左右を正しい向きに
-  const rawGY = -(ag.y ?? 0) / 9.8 * 2.5; // 縦持ちでy=-9.8 → rawGY=+2.5（正常な下向き重力）
-
-  const S = 0.25;
-  smoothGX = smoothGX + S * (rawGX - smoothGX);
-  smoothGY = smoothGY + S * (rawGY - smoothGY);
-
-  const gx = Math.max(-3, Math.min(3, smoothGX));
-  const gy = Math.max(-3, Math.min(3, smoothGY));
-
-  engine.gravity.x     = gx; engine.gravity.y     = gy;
-  dateEngine.gravity.x = gx; dateEngine.gravity.y = gy;
+  const ag=e.accelerationIncludingGravity; if (!ag) return;
+  const rawGX=(ag.x??0)/9.8*2.5;
+  const rawGY=-(ag.y??0)/9.8*2.5;
+  const S=0.25;
+  smoothGX+=S*(rawGX-smoothGX);
+  smoothGY+=S*(rawGY-smoothGY);
+  const gx=Math.max(-3,Math.min(3,smoothGX));
+  const gy=Math.max(-3,Math.min(3,smoothGY));
+  engine.gravity.x=gx; engine.gravity.y=gy;
+  dateEngine.gravity.x=gx; dateEngine.gravity.y=gy;
 }
 
 // ══════════════════════════════════════
-// 広告・プレミアム機能
+// 広告・プレミアム
 // ══════════════════════════════════════
-const AD_PRICE_YEN = 490;
-let foodAddCount = 0; // 追加回数カウント（広告トリガー用）
-let isPremium = localStorage.getItem('meshikoro_premium') === 'true';
+const AD_PRICE_YEN=490;
+let foodAddCount=0;
+let isPremium=localStorage.getItem('meshikoro_premium')==='true';
 
-// 広告モーダルHTML（body末尾に追加）
 function initAdSystem() {
   if (isPremium) return;
-  const area = document.getElementById('ad-banner-area');
+  const area=document.getElementById('ad-banner-area');
   if (!area) return;
-  area.innerHTML = `
+  area.innerHTML=`
     <div id="ad-banner-inner" onclick="openPremiumModal()">
       <span>📺 広告が表示されます</span>
       <span class="highlight">✨ ${AD_PRICE_YEN}円で広告オフ →</span>
-    </div>
-  `;
+    </div>`;
 }
-
 function openPremiumModal() {
-  const overlay = document.createElement('div');
-  overlay.id = 'premium-overlay';
-  overlay.style.cssText = `
-    position:fixed;inset:0;z-index:700;background:rgba(30,15,5,0.6);
-    display:flex;align-items:center;justify-content:center;padding:20px;
-  `;
-  overlay.innerHTML = `
+  const ov=document.createElement('div');
+  ov.id='premium-overlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:700;background:rgba(30,15,5,0.6);display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.innerHTML=`
     <div style="background:var(--panel);border-radius:16px;padding:24px;width:100%;max-width:320px;text-align:center;">
       <div style="font-size:40px;margin-bottom:8px;">✨</div>
       <div style="font-family:'DotGothic16',monospace;font-size:16px;color:var(--accent2);margin-bottom:8px;">めしコロ プレミアム</div>
-      <div style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:16px;">
-        広告を完全に非表示にする<br>買い切りプラン
-      </div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:16px;">広告を完全に非表示にする<br>買い切りプラン</div>
       <div style="font-size:28px;font-weight:800;color:var(--accent);margin-bottom:20px;">${AD_PRICE_YEN}円</div>
       <div style="display:flex;gap:8px;">
-        <button onclick="document.getElementById('premium-overlay').remove()" 
-          style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--card);font-family:'DotGothic16',monospace;cursor:pointer;color:var(--muted)">
-          キャンセル
-        </button>
+        <button onclick="document.getElementById('premium-overlay').remove()"
+          style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--card);font-family:'DotGothic16',monospace;cursor:pointer;color:var(--muted)">キャンセル</button>
         <button onclick="purchasePremium()"
-          style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-family:'DotGothic16',monospace;cursor:pointer;font-size:14px;">
-          購入する 🎉
-        </button>
+          style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-family:'DotGothic16',monospace;cursor:pointer;font-size:14px;">購入する 🎉</button>
       </div>
-      <div style="margin-top:12px;font-size:10px;color:var(--muted);">
-        ※実際の決済にはApp Store連携が必要です
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+      <div style="margin-top:12px;font-size:10px;color:var(--muted);">※実際の決済にはApp Store連携が必要です</div>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.onclick=(e)=>{ if(e.target===ov) ov.remove(); };
 }
-
 function purchasePremium() {
-  isPremium = true;
-  localStorage.setItem('meshikoro_premium', 'true');
+  isPremium=true;
+  localStorage.setItem('meshikoro_premium','true');
   document.getElementById('premium-overlay')?.remove();
-  document.getElementById('ad-banner-area').innerHTML = '';
+  document.getElementById('ad-banner-area').innerHTML='';
   document.getElementById('interstitial-ad')?.remove();
   showToast('✨ プレミアムになりました！広告が消えました 🎉');
 }
-
-// 動画広告インタースティシャル（2食追加ごとに表示）
 function maybeShowAd() {
   if (isPremium) return;
   foodAddCount++;
-  if (foodAddCount % 2 === 0) {
-    setTimeout(showInterstitialAd, 600);
-  }
+  if (foodAddCount%2===0) setTimeout(showInterstitialAd,600);
 }
-
 function showInterstitialAd() {
   if (isPremium) return;
-  const ad = document.createElement('div');
-  ad.id = 'interstitial-ad';
-  ad.style.cssText = `
-    position:fixed;inset:0;z-index:800;background:rgba(0,0,0,0.92);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
-  `;
-  let countdown = 15;
-  ad.innerHTML = `
-    <div style="color:#aaa;font-size:11px;font-family:'DotGothic16',monospace;position:absolute;top:16px;right:16px;" id="ad-close-timer">${countdown}秒後にスキップ</div>
+  const ad=document.createElement('div');
+  ad.id='interstitial-ad';
+  ad.style.cssText='position:fixed;inset:0;z-index:800;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
+  let cd=15;
+  ad.innerHTML=`
+    <div style="color:#aaa;font-size:11px;font-family:'DotGothic16',monospace;position:absolute;top:16px;right:16px;" id="ad-close-timer">${cd}秒後にスキップ</div>
     <div style="width:90%;max-width:360px;aspect-ratio:16/9;background:#111;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;border:1px solid #333;">
       <div style="font-size:40px;">📺</div>
       <div style="color:#fff;font-family:'DotGothic16',monospace;font-size:13px;">広告動画</div>
       <div style="color:#888;font-size:11px;">（AdMob SDK連携後に実際の広告が表示されます）</div>
     </div>
-    <button id="ad-skip-btn" disabled
-      style="padding:10px 28px;border-radius:10px;border:none;background:#444;color:#888;font-family:'DotGothic16',monospace;font-size:13px;cursor:not-allowed;">
-      スキップ（${countdown}）
-    </button>
-    <button onclick="openPremiumModal()"
-      style="padding:8px 20px;border-radius:8px;border:1px solid #666;background:none;color:#aaa;font-family:'DotGothic16',monospace;font-size:11px;cursor:pointer;">
-      ✨ ${AD_PRICE_YEN}円で広告を消す
-    </button>
-  `;
+    <button id="ad-skip-btn" disabled style="padding:10px 28px;border-radius:10px;border:none;background:#444;color:#888;font-family:'DotGothic16',monospace;font-size:13px;cursor:not-allowed;">スキップ（${cd}）</button>
+    <button onclick="openPremiumModal()" style="padding:8px 20px;border-radius:8px;border:1px solid #666;background:none;color:#aaa;font-family:'DotGothic16',monospace;font-size:11px;cursor:pointer;">✨ ${AD_PRICE_YEN}円で広告を消す</button>`;
   document.body.appendChild(ad);
-
-  const timer = setInterval(() => {
-    countdown--;
-    const timerEl = document.getElementById('ad-close-timer');
-    const skipBtn = document.getElementById('ad-skip-btn');
-    if (timerEl) timerEl.textContent = countdown > 0 ? `${countdown}秒後にスキップ` : '';
-    if (skipBtn) {
-      skipBtn.textContent = countdown > 0 ? `スキップ（${countdown}）` : 'スキップ ✕';
-      if (countdown <= 0) {
-        skipBtn.disabled = false;
-        skipBtn.style.background = 'var(--accent)';
-        skipBtn.style.color = '#fff';
-        skipBtn.style.cursor = 'pointer';
-        skipBtn.onclick = () => { document.getElementById('interstitial-ad')?.remove(); };
-        clearInterval(timer);
+  const tmr=setInterval(()=>{
+    cd--;
+    const te=document.getElementById('ad-close-timer');
+    const sb=document.getElementById('ad-skip-btn');
+    if (te) te.textContent=cd>0?`${cd}秒後にスキップ`:'';
+    if (sb) {
+      sb.textContent=cd>0?`スキップ（${cd}）`:'スキップ ✕';
+      if (cd<=0) {
+        sb.disabled=false; sb.style.background='var(--accent)';
+        sb.style.color='#fff'; sb.style.cursor='pointer';
+        sb.onclick=()=>document.getElementById('interstitial-ad')?.remove();
+        clearInterval(tmr);
       }
-    } else {
-      clearInterval(timer);
-    }
-  }, 1000);
+    } else clearInterval(tmr);
+  },1000);
 }
 
 // ══════════════════════════════════════
@@ -1723,11 +1352,10 @@ function showInterstitialAd() {
 // ══════════════════════════════════════
 let toastTimer;
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
 }
 
 // ══════════════════════════════════════
@@ -1735,24 +1363,25 @@ function showToast(msg) {
 // ══════════════════════════════════════
 function initPWA() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
-  const c = document.createElement('canvas');
-  c.width = c.height = 180;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#f5f0e8';
-  ctx.beginPath(); ctx.roundRect(0,0,180,180,36); ctx.fill();
-  ctx.font = '110px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('🍙', 90, 95);
-  const icon = document.getElementById('apple-icon');
-  if (icon) icon.href = c.toDataURL('image/png');
+  const c=document.createElement('canvas');
+  c.width=c.height=180;
+  const cx=c.getContext('2d');
+  cx.fillStyle='#f5f0e8';
+  cx.beginPath(); cx.roundRect(0,0,180,180,36); cx.fill();
+  cx.font='110px serif'; cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText('🍙',90,95);
+  const icon=document.getElementById('apple-icon');
+  if (icon) icon.href=c.toDataURL('image/png');
 }
 
-window.addEventListener('load', () => {
-  setTimeout(() => {
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
     resizePhysics();
     reloadTodayPhysics();
     initPWA();
     initAdSystem();
-  }, 150);
+    checkOrientation();
+  },150);
 });
 </script>
 </body>
