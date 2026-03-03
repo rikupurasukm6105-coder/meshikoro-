@@ -1485,15 +1485,21 @@ function handleMotion(e) {
   const ag = e.accelerationIncludingGravity;
   if (!ag) return;
 
-  // iPhoneを縦に持った状態:
-  //   ag.x: 左右の重力成分（右傾け→正、左傾け→負）
-  //   ag.y: 上下の重力成分（上部を下に→負、下部を下に→正）
-  //   ag.z: 画面の前後（今回は使わない）
-  // ※iOSは符号が逆なので -1 をかける
-  const rawGX = -(ag.x ?? 0) / 9.8 * 2.5;
-  const rawGY =  (ag.y ?? 0) / 9.8 * 2.5;
+  // iPhoneを縦に持った時のaccelerationIncludingGravity実測値:
+  //   x ≈  0    (左右中立)
+  //   y ≈ -9.8  (縦持ちで重力がy負方向にかかる)
+  //   z ≈  0
+  //
+  // 欲しい動作:
+  //   右に傾ける  → gx正（右に転がる）  → ag.xが負になる → rawGX = -ag.x/9.8
+  //   左に傾ける  → gx負（左に転がる）  → ag.xが正になる → rawGX = -ag.x/9.8
+  //   下部を下に  → gy正（下に転がる）  → ag.yが負のまま変化 → rawGY = -ag.y/9.8
+  //   上部を下に  → gy負（上に転がる）  → ag.yが正に近づく  → rawGY = -ag.y/9.8
+  //   机に水平    → gy≈0（ほぼ止まる）  → ag.y≈0           → rawGY ≈ 0
 
-  // 軽く平滑化
+  const rawGX = -(ag.x ?? 0) / 9.8 * 2.5;
+  const rawGY = -(ag.y ?? 0) / 9.8 * 2.5; // 縦持ちでy=-9.8 → rawGY=+2.5（正常な下向き重力）
+
   const S = 0.25;
   smoothGX = smoothGX + S * (rawGX - smoothGX);
   smoothGY = smoothGY + S * (rawGY - smoothGY);
@@ -1573,7 +1579,7 @@ function maybeShowAd() {
   if (isPremium) return;
   foodAddCount++;
   if (foodAddCount % 2 === 0) {
-    setTimeout(showInterstitialAd, 800);
+    setTimeout(showInterstitialAd, 600);
   }
 }
 
