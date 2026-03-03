@@ -1446,22 +1446,24 @@ function syncGyroBtn() {
 }
 
 function requestGyro() {
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    DeviceOrientationEvent.requestPermission()
-      .then(s => s === 'granted' ? enableGyro() : showToast('❌ ジャイロの許可が必要です'))
-      .catch(() => showToast('❌ ジャイロが使えません'));
-  } else if ('DeviceOrientationEvent' in window) {
+  // DeviceMotionEventを使う（加速度センサーで直接重力ベクトルを取得）
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    // iOS 13+ は許可が必要
+    DeviceMotionEvent.requestPermission()
+      .then(s => s === 'granted' ? enableGyro() : showToast('❌ センサーの許可が必要です'))
+      .catch(() => showToast('❌ センサーが使えません'));
+  } else if ('DeviceMotionEvent' in window) {
     enableGyro();
   } else {
-    showToast('❌ このデバイスはジャイロ非対応です');
+    showToast('❌ このデバイスはセンサー非対応です');
   }
 }
 
 function enableGyro() {
   if (gyroEnabled) {
     gyroEnabled = false;
-    window.removeEventListener('deviceorientation', handleOrientation);
+    window.removeEventListener('devicemotion', handleMotion);
     engine.gravity.x = 0;     engine.gravity.y = 1.5;
     dateEngine.gravity.x = 0; dateEngine.gravity.y = 1.5;
     syncGyroBtn();
@@ -1469,41 +1471,35 @@ function enableGyro() {
     return;
   }
   gyroEnabled = true;
-  window.addEventListener('deviceorientation', handleOrientation, true);
+  window.addEventListener('devicemotion', handleMotion);
   syncGyroBtn();
   showToast('🌀 ジャイロ ON！傾けてみて！');
 }
 
-// betaの平滑化用
-let smoothBeta  = null;
-let smoothGamma = null;
-const SMOOTH = 0.3; // 高めにして反応を速く
+// 平滑化用
+let smoothGX = 0;
+let smoothGY = 1.5;
 
-function handleOrientation(e) {
+function handleMotion(e) {
   if (!gyroEnabled) return;
+  const ag = e.accelerationIncludingGravity;
+  if (!ag) return;
 
-  const rawBeta  = e.beta  ?? 80;
-  const rawGamma = e.gamma ?? 0;
+  // iPhoneを縦に持った状態:
+  //   ag.x: 左右の重力成分（右傾け→正、左傾け→負）
+  //   ag.y: 上下の重力成分（上部を下に→負、下部を下に→正）
+  //   ag.z: 画面の前後（今回は使わない）
+  // ※iOSは符号が逆なので -1 をかける
+  const rawGX = -(ag.x ?? 0) / 9.8 * 2.5;
+  const rawGY =  (ag.y ?? 0) / 9.8 * 2.5;
 
-  // 平滑化
-  if (smoothBeta === null) {
-    smoothBeta  = rawBeta;
-    smoothGamma = rawGamma;
-  } else {
-    smoothBeta  = smoothBeta  + SMOOTH * (rawBeta  - smoothBeta);
-    smoothGamma = smoothGamma + SMOOTH * (rawGamma - smoothGamma);
-  }
+  // 軽く平滑化
+  const S = 0.25;
+  smoothGX = smoothGX + S * (rawGX - smoothGX);
+  smoothGY = smoothGY + S * (rawGY - smoothGY);
 
-  // 左右: gamma（右傾け→右に転がる）
-  const gx = Math.max(-3, Math.min(3, smoothGamma / 15));
-
-  // 上下: beta=80が縦持ち基準
-  // 「上部を下に傾ける」= betaが増える → 上に転がる(gy負)
-  // 「下部を下に傾ける」= betaが減る   → 下に転がる(gy正)
-  // ※符号を反転させる
-  const BETA_BASE = 80;
-  const tilt = smoothBeta - BETA_BASE;
-  const gy = Math.max(-2.5, Math.min(3.5, -(tilt / 15)));
+  const gx = Math.max(-3, Math.min(3, smoothGX));
+  const gy = Math.max(-3, Math.min(3, smoothGY));
 
   engine.gravity.x     = gx; engine.gravity.y     = gy;
   dateEngine.gravity.x = gx; dateEngine.gravity.y = gy;
@@ -1589,7 +1585,7 @@ function showInterstitialAd() {
     position:fixed;inset:0;z-index:800;background:rgba(0,0,0,0.92);
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
   `;
-  let countdown = 5;
+  let countdown = 15;
   ad.innerHTML = `
     <div style="color:#aaa;font-size:11px;font-family:'DotGothic16',monospace;position:absolute;top:16px;right:16px;" id="ad-close-timer">${countdown}秒後にスキップ</div>
     <div style="width:90%;max-width:360px;aspect-ratio:16/9;background:#111;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;border:1px solid #333;">
