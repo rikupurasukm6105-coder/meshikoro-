@@ -688,11 +688,12 @@ const render = Render.create({
   options: { width:W, height:H, wireframes:false, background:'transparent' }
 });
 
-const wallOpts = { isStatic:true, render:{fillStyle:'transparent'}, friction:0.4, restitution:0.1 };
-let wGround = Bodies.rectangle(W/2, H+25, W*3, 50, wallOpts);
-let wLeft   = Bodies.rectangle(-25, H/2, 50, H*3, wallOpts);
-let wRight  = Bodies.rectangle(W+25, H/2, 50, H*3, wallOpts);
-World.add(engine.world, [wGround, wLeft, wRight]);
+const wallOpts = { isStatic:true, render:{fillStyle:'transparent'}, friction:0.4, restitution:0.3 };
+let wGround  = Bodies.rectangle(W/2, H+25,  W*3, 50, wallOpts);
+let wLeft    = Bodies.rectangle(-25,  H/2,  50, H*3, wallOpts);
+let wRight   = Bodies.rectangle(W+25, H/2,  50, H*3, wallOpts);
+let wCeiling = Bodies.rectangle(W/2,  -25,  W*3, 50, wallOpts);
+World.add(engine.world, [wGround, wLeft, wRight, wCeiling]);
 
 const mc = MouseConstraint.create(engine, {
   mouse: Mouse.create(render.canvas),
@@ -709,8 +710,15 @@ function resizePhysics() {
   W = wrap.clientWidth; H = wrap.clientHeight;
   render.canvas.width = W; render.canvas.height = H;
   render.options.width = W; render.options.height = H;
-  Body.setPosition(wGround, {x:W/2, y:H+25});
-  Body.setPosition(wRight,  {x:W+25, y:H/2});
+  Body.setPosition(wGround,  {x:W/2,  y:H+25});
+  Body.setPosition(wLeft,    {x:-25,  y:H/2});
+  Body.setPosition(wRight,   {x:W+25, y:H/2});
+  Body.setPosition(wCeiling, {x:W/2,  y:-25});
+  // 壁のサイズも更新
+  Body.setVertices(wGround,  Bodies.rectangle(W/2, H+25, W*3, 50, wallOpts).vertices);
+  Body.setVertices(wLeft,    Bodies.rectangle(-25,  H/2, 50, H*3, wallOpts).vertices);
+  Body.setVertices(wRight,   Bodies.rectangle(W+25, H/2, 50, H*3, wallOpts).vertices);
+  Body.setVertices(wCeiling, Bodies.rectangle(W/2,  -25, W*3, 50, wallOpts).vertices);
 }
 window.addEventListener('resize', resizePhysics);
 
@@ -733,7 +741,8 @@ Events.on(render, 'afterRender', () => {
 
 function addPhysBody(food) {
   const sz = 36 + Math.random()*16;
-  const x  = W*0.2 + Math.random()*W*0.6;
+  const margin = sz + 10;
+  const x  = margin + Math.random() * (W - margin*2);
   const isRound = food.shape === 'circle';
   let body;
   if (isRound) {
