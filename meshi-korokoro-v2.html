@@ -444,96 +444,98 @@ const saveDay = (d,items) => { const s=getStore(); s[d]=items; saveStore(s); };
 // ══════════════════════════════════════
 // PHYSICS ENGINE
 // ══════════════════════════════════════
-const { Engine, Render, Runner, Bodies, Body, World, Events, Mouse, MouseConstraint } = Matter;
+const { Engine, Runner, Bodies, Body, World, Events, Mouse, MouseConstraint } = Matter;
 
 const engine  = Engine.create({ gravity:{ x:0, y:1.5 } });
 const canvasEl = document.getElementById('world');
 const wrapEl   = document.getElementById('canvas-wrap');
+const ctx      = canvasEl.getContext('2d');
 
-// canvasのサイズを取得（DOMが確定してから呼ぶ）
 function getCanvasSize() {
   const r = wrapEl.getBoundingClientRect();
-  return { W: Math.floor(r.width) || window.innerWidth, H: Math.floor(r.height) || 400 };
+  return {
+    W: Math.floor(r.width)  || window.innerWidth,
+    H: Math.floor(r.height) || 400
+  };
 }
 
 let { W, H } = getCanvasSize();
+canvasEl.width  = W;
+canvasEl.height = H;
 
-const renderer = Render.create({
-  canvas: canvasEl,
-  engine,
-  options: { width:W, height:H, wireframes:false, background:'transparent' }
-});
-
-// 壁
+// ══ 壁 ══
 const THICK = 80;
 let walls = [];
-
 function rebuildWalls() {
   if (walls.length) World.remove(engine.world, walls);
-  const wo = { isStatic:true, render:{ fillStyle:'transparent' }, friction:0.5, restitution:0.05, label:'wall' };
+  const wo = { isStatic:true, friction:0.5, restitution:0.05, label:'wall' };
   walls = [
-    Bodies.rectangle(W/2,    H+THICK/2, W+THICK*2, THICK, wo), // 床
-    Bodies.rectangle(-THICK/2, H/2,     THICK, H+THICK*2, wo), // 左
-    Bodies.rectangle(W+THICK/2, H/2,    THICK, H+THICK*2, wo), // 右
-    Bodies.rectangle(W/2,    -THICK/2,  W+THICK*2, THICK, wo), // 天井
+    Bodies.rectangle(W/2,      H+THICK/2,  W+THICK*2, THICK,     wo),
+    Bodies.rectangle(-THICK/2, H/2,        THICK,     H+THICK*2, wo),
+    Bodies.rectangle(W+THICK/2,H/2,        THICK,     H+THICK*2, wo),
+    Bodies.rectangle(W/2,      -THICK/2,   W+THICK*2, THICK,     wo),
   ];
   World.add(engine.world, walls);
 }
 rebuildWalls();
 
-// マウス/タッチ
-const mouse = Mouse.create(canvasEl);
-const mc = MouseConstraint.create(engine, { mouse, constraint:{ stiffness:0.15, render:{ visible:false } } });
+// マウス/タッチ（Matter.jsのドラッグ用）
+const mMouse = Mouse.create(canvasEl);
+const mc = MouseConstraint.create(engine, {
+  mouse: mMouse,
+  constraint:{ stiffness:0.15 }
+});
 World.add(engine.world, mc);
 
 Runner.run(Runner.create(), engine);
-Render.run(renderer);
 
-// 食べ物リスト { body, food }
+// 食べ物リスト
 let physBodies = [];
 
-// ══ 絵文字描画 ══
-Events.on(renderer, 'afterRender', () => {
-  const ctx = canvasEl.getContext('2d');
+// ══ 自前描画ループ（Matter Renderを使わない） ══
+function drawLoop() {
+  requestAnimationFrame(drawLoop);
+
+  // canvasサイズが変わっていたら自動追従
+  const cw = canvasEl.width;
+  const ch = canvasEl.height;
+
+  ctx.clearRect(0, 0, cw, ch);
+
   physBodies.forEach(({ body, food }) => {
     if (!body || !food) return;
     const { x, y } = body.position;
+    if (x < -200 || x > cw+200 || y < -200 || y > ch+200) return;
     const sz = body._sz || 42;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(body.angle);
-    ctx.font = `${sz}px serif`;
-    ctx.textAlign = 'center';
+    ctx.font = `${Math.round(sz * 1.6)}px serif`;
+    ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(food.emoji || '🍽️', 0, 0);
     ctx.restore();
   });
-});
+}
+drawLoop();
 
 // ══ 食べ物を物理世界に追加 ══
 function addPhysBody(food) {
-  const sz  = 38 + Math.random() * 14;
+  const sz  = 32 + Math.random() * 12;
   const pad = sz + 20;
   const x   = pad + Math.random() * Math.max(10, W - pad * 2);
-  const y   = sz + 5; // 画面上部から少し内側
+  const y   = sz + 10;
 
-  const opts = {
-    restitution: 0.15,
-    friction: 0.45,
-    frictionAir: 0.012,
-    render: { fillStyle: food.color || '#d4622a' }
-  };
-
-  let body;
-  if (food.shape === 'circle') {
-    body = Bodies.circle(x, y, sz, opts);
-  } else {
-    body = Bodies.rectangle(x, y, sz * 1.8, sz * 1.15, { ...opts, chamfer:{ radius:10 } });
-  }
+  // すべて円形の当たり判定（シンプルで確実）
+  const body = Bodies.circle(x, y, sz, {
+    restitution: 0.2,
+    friction:    0.4,
+    frictionAir: 0.01,
+  });
 
   body._sz   = sz;
-  body._food = food; // foodデータを直接ボディに持たせる
-  Body.setVelocity(body, { x:(Math.random()-0.5)*1.5, y:1.5 });
+  body._food = food;
+  Body.setVelocity(body, { x:(Math.random()-0.5)*2, y:1.5 });
   World.add(engine.world, body);
   physBodies.push({ body, food });
 }
@@ -541,40 +543,22 @@ function addPhysBody(food) {
 // ══ 画面サイズ変更 ══
 function resizePhysics() {
   const size = getCanvasSize();
-  W = size.W; H = size.H;
-
-  // canvasサイズを更新
+  W = size.W;
+  H = size.H;
   canvasEl.width  = W;
   canvasEl.height = H;
-  renderer.options.width  = W;
-  renderer.options.height = H;
-
-  // ★重要: rendererのビューポートを明示的にリセット
-  renderer.bounds.min.x = 0;
-  renderer.bounds.min.y = 0;
-  renderer.bounds.max.x = W;
-  renderer.bounds.max.y = H;
-
   rebuildWalls();
-
-  // 画面外に出たボディを中央に戻す
   physBodies.forEach(({ body }) => {
     const { x, y } = body.position;
-    const nx = Math.max(50, Math.min(W - 50, x));
-    const ny = Math.max(50, Math.min(H - 50, y));
-    Body.setPosition(body, { x: nx, y: ny });
-    Body.setVelocity(body, { x: 0, y: 0 });
+    Body.setPosition(body, {
+      x: Math.max(50, Math.min(W-50, x)),
+      y: Math.max(50, Math.min(H-50, y)),
+    });
+    Body.setVelocity(body, { x:0, y:0 });
   });
 }
 
-// orientationchange後はiOSのレイアウト確定を待つ
-window.addEventListener('resize', () => {
-  setTimeout(() => {
-    resizePhysics();
-    // 絵文字が消えた場合に備えて強制再描画
-    physBodies.forEach(({ body }) => Body.setVelocity(body, { x:0, y:0 }));
-  }, 300);
-});
+window.addEventListener('resize', () => setTimeout(resizePhysics, 350));
 
 // ══ 今日の物理リセット ══
 function reloadTodayPhysics() {
@@ -992,21 +976,21 @@ function enableGyro() {
 function handleOrientation(e) {
   if (!gyroEnabled) return;
 
-  // iPhoneを縦に持った状態:
-  //   beta  ≈ 90  (前後傾き: 0=水平, 90=垂直, 180=完全に後ろ向き)
-  //   gamma ≈ 0   (左右傾き: -90〜90)
+  // iPhoneを縦に持った基準値:
+  //   beta  = 90前後  (スマホを立てた状態)
+  //   gamma = 0前後   (まっすぐ持った状態)
+  //
+  // 「上部を下に傾ける」= betaが増える(90→120) → 下に転がる(gy正)
+  // 「下部を下に傾ける」= betaが減る(90→60)   → 上に転がる(gy負)
+  // 「左に傾ける」      = gammaが負になる       → 左に転がる(gx負)
+  // 「右に傾ける」      = gammaが正になる       → 右に転がる(gx正)
 
-  const gamma = e.gamma || 0; // 左右
-  const beta  = e.beta  || 0; // 前後
+  const gamma = e.gamma || 0;
+  const beta  = e.beta  || 0;
 
-  // 左右: gammaをそのまま → 左に傾けると左に転がる
-  const gx = Math.max(-2.5, Math.min(2.5, gamma / 20));
-
-  // 上下: betaは縦持ちで90度が基準
-  // 前に倒す(beta小さくなる) → 下に転がる(gy正)
-  // 後ろに倒す(beta大きくなる) → 上に転がる(gy負)
-  // beta=90の時gy=0（通常重力）になるよう調整
-  const gy = Math.max(-2.0, Math.min(2.5, (90 - beta) / 20));
+  // 縦持ち基準(beta=90)からのズレをそのまま重力に
+  const gx = Math.max(-2.5, Math.min(2.5,  gamma        / 20));
+  const gy = Math.max(-2.0, Math.min(2.5, (beta - 90)   / 20));
 
   engine.gravity.x = gx;
   engine.gravity.y = gy;
