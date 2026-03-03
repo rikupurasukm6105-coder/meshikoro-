@@ -4,7 +4,7 @@
   "description": "食べた料理をコロコロ記録するアプリ",
   "start_url": "./meshi-korokoro-v2.html",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "background_color": "#f5f0e8",
   "theme_color": "#f5f0e8",
   "icons": [

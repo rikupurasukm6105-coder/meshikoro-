@@ -16,6 +16,27 @@
 <!-- iOSホーム画面アイコン（絵文字をCanvasで生成） -->
 <link rel="apple-touch-icon" id="apple-icon" href="">
 
+<!-- 横画面ロック -->
+<style>
+  @media screen and (orientation: landscape) {
+    body::before {
+      content: '📱 縦向きにしてください';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #f5f0e8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-family: 'Kaisei Tokumin', serif;
+      color: #2c2118;
+    }
+    body > * { display: none !important; }
+    body::before { display: flex !important; }
+  }
+</style>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Kaisei+Tokumin:wght@400;700;800&family=DotGothic16&display=swap');
@@ -680,7 +701,11 @@ function saveDay(dateStr, items) { const s=getStore(); s[dateStr]=items; saveSto
 const { Engine,Render,Runner,Bodies,Body,World,Events,Mouse,MouseConstraint } = Matter;
 const engine = Engine.create();
 const wrap   = document.getElementById('canvas-wrap');
-let W = wrap.clientWidth, H = wrap.clientHeight;
+let W = window.innerWidth;
+let H = window.innerHeight
+      - document.querySelector('header').offsetHeight
+      - document.getElementById('today-stats').offsetHeight
+      - 60; // action-bar の高さ分
 
 const render = Render.create({
   canvas: document.getElementById('world'),
@@ -688,12 +713,19 @@ const render = Render.create({
   options: { width:W, height:H, wireframes:false, background:'transparent' }
 });
 
-const wallOpts = { isStatic:true, render:{fillStyle:'transparent'}, friction:0.4, restitution:0.15 };
-let wGround  = Bodies.rectangle(W/2, H+25,  W*3, 50, wallOpts);
-let wLeft    = Bodies.rectangle(-25,  H/2,  50, H*3, wallOpts);
-let wRight   = Bodies.rectangle(W+25, H/2,  50, H*3, wallOpts);
-let wCeiling = Bodies.rectangle(W/2,  -25,  W*3, 50, wallOpts);
-World.add(engine.world, [wGround, wLeft, wRight, wCeiling]);
+const WALL = 60; // 壁の厚さを厚めに
+const wallOpts = { isStatic:true, render:{fillStyle:'transparent'}, friction:0.5, restitution:0.05 };
+
+function makeWalls() {
+  return [
+    Bodies.rectangle(W/2,    H+(WALL/2),  W*3,    WALL, wallOpts), // 床
+    Bodies.rectangle(-(WALL/2), H/2,      WALL,   H*3,  wallOpts), // 左
+    Bodies.rectangle(W+(WALL/2), H/2,     WALL,   H*3,  wallOpts), // 右
+    Bodies.rectangle(W/2,    -(WALL/2),   W*3,    WALL, wallOpts), // 天井
+  ];
+}
+let walls = makeWalls();
+World.add(engine.world, walls);
 
 const mc = MouseConstraint.create(engine, {
   mouse: Mouse.create(render.canvas),
@@ -707,18 +739,30 @@ Render.run(render);
 let physBodies = [];
 
 function resizePhysics() {
-  W = wrap.clientWidth; H = wrap.clientHeight;
-  render.canvas.width = W; render.canvas.height = H;
+  W = window.innerWidth;
+  H = window.innerHeight
+    - document.querySelector('header').offsetHeight
+    - document.getElementById('today-stats').offsetHeight
+    - 60;
+
+  render.canvas.width  = W; render.canvas.height = H;
   render.options.width = W; render.options.height = H;
-  Body.setPosition(wGround,  {x:W/2,  y:H+25});
-  Body.setPosition(wLeft,    {x:-25,  y:H/2});
-  Body.setPosition(wRight,   {x:W+25, y:H/2});
-  Body.setPosition(wCeiling, {x:W/2,  y:-25});
-  // 壁のサイズも更新
-  Body.setVertices(wGround,  Bodies.rectangle(W/2, H+25, W*3, 50, wallOpts).vertices);
-  Body.setVertices(wLeft,    Bodies.rectangle(-25,  H/2, 50, H*3, wallOpts).vertices);
-  Body.setVertices(wRight,   Bodies.rectangle(W+25, H/2, 50, H*3, wallOpts).vertices);
-  Body.setVertices(wCeiling, Bodies.rectangle(W/2,  -25, W*3, 50, wallOpts).vertices);
+
+  // 壁を作り直す
+  World.remove(engine.world, walls);
+  walls = makeWalls();
+  World.add(engine.world, walls);
+
+  // 画面外に出た食べ物を画面内に戻す
+  physBodies.forEach(({body}) => {
+    const {x, y} = body.position;
+    const nx = Math.max(40, Math.min(W-40, x));
+    const ny = Math.max(40, Math.min(H-40, y));
+    if (nx !== x || ny !== y) {
+      Body.setPosition(body, {x: nx, y: ny});
+      Body.setVelocity(body, {x: 0, y: 0});
+    }
+  });
 }
 window.addEventListener('resize', resizePhysics);
 
@@ -1144,9 +1188,12 @@ function handleOrientation(e) {
 // INIT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━
 window.addEventListener('load', () => {
-  resizePhysics();
-  reloadTodayPhysics();
-  initPWA();
+  // DOM描画完了後にサイズ確定させる
+  setTimeout(() => {
+    resizePhysics();
+    reloadTodayPhysics();
+    initPWA();
+  }, 100);
 });
 
 function initPWA() {
