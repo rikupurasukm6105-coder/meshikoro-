@@ -357,11 +357,12 @@ canvas { display:block; position:absolute; top:0; left:0; }
       </div>
 
       <div id="date-action-bar" style="flex-shrink:0;background:var(--panel);border-top:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;align-items:center;">
-        <input type="file" id="date-file-input" accept="image/*" capture="environment" onchange="handleDateFile(event)">
-        <button class="btn btn-primary" onclick="document.getElementById('date-file-input').click()">
+        <input type="file" id="date-file-input" accept="image/*" capture="environment" onchange="handleDateFile(event)" style="display:none;">
+        <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:13px;" onclick="document.getElementById('date-file-input').click()">
           📸 撮影して追加
         </button>
         <button class="btn btn-secondary" onclick="openManualModal(currentDateViewKey)">✏️ 手入力</button>
+        <button class="btn btn-secondary" id="gyro-btn2" onclick="requestGyro()">📱</button>
       </div>
     </div>
 
@@ -1217,9 +1218,25 @@ function renderDayDetail(ds) {
 }
 
 // ══════════════════════════════════════
-// GYROSCOPE
+// GYROSCOPE（キャリブレーション方式）
 // ══════════════════════════════════════
-let gyroEnabled = false;
+let gyroEnabled  = false;
+let gyroBetaBase  = null; // ONにした瞬間のbeta（基準値）
+let gyroGammaBase = null; // ONにした瞬間のgamma（基準値）
+
+function syncGyroBtn() {
+  ['gyro-btn','gyro-btn2'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    if (gyroEnabled) {
+      btn.classList.add('gyro-on');
+      btn.textContent = '🌀';
+    } else {
+      btn.classList.remove('gyro-on');
+      btn.textContent = '📱';
+    }
+  });
+}
 
 function requestGyro() {
   if (typeof DeviceOrientationEvent !== 'undefined' &&
@@ -1236,33 +1253,44 @@ function requestGyro() {
 
 function enableGyro() {
   if (gyroEnabled) {
+    // OFF
     gyroEnabled = false;
+    gyroBetaBase = null;
+    gyroGammaBase = null;
     window.removeEventListener('deviceorientation', handleOrientation);
-    engine.gravity.x = 0; engine.gravity.y = 1.5;
+    engine.gravity.x = 0;     engine.gravity.y = 1.5;
     dateEngine.gravity.x = 0; dateEngine.gravity.y = 1.5;
-    document.getElementById('gyro-btn').classList.remove('gyro-on');
-    document.getElementById('gyro-btn').textContent = '📱';
-    document.getElementById('gyro-debug').style.display = 'none';
+    syncGyroBtn();
     showToast('📱 ジャイロ OFF');
     return;
   }
-  gyroEnabled = true;
+  // ON：最初のイベントで基準値を記録するためフラグだけ立てる
+  gyroEnabled  = true;
+  gyroBetaBase  = null; // 最初のhandleOrientationで設定
+  gyroGammaBase = null;
   window.addEventListener('deviceorientation', handleOrientation, true);
-  document.getElementById('gyro-btn').classList.add('gyro-on');
-  document.getElementById('gyro-btn').textContent = '🌀';
-  showToast('🌀 ジャイロ ON！傾けてみて！');
+  syncGyroBtn();
+  showToast('🌀 ジャイロ ON！今の向きが基準です');
 }
 
 function handleOrientation(e) {
   if (!gyroEnabled) return;
-  const beta  = e.beta  || 0;
-  const gamma = e.gamma || 0;
+  const beta  = e.beta  ?? 0;
+  const gamma = e.gamma ?? 0;
 
-  // beta=80が縦持ち基準（実測値）
-  // 上部を下に傾ける = beta増加 → 下に転がる(gy正)
-  // 下部を下に傾ける = beta減少 → 上に転がる(gy負)
-  const gx = Math.max(-2.5, Math.min(2.5,  gamma       / 20));
-  const gy = Math.max(-2.0, Math.min(2.5, (beta - 80)  / 20));
+  // 最初の呼び出しで「今の持ち方」を基準として記録
+  if (gyroBetaBase === null) {
+    gyroBetaBase  = beta;
+    gyroGammaBase = gamma;
+    return;
+  }
+
+  // 基準からのズレだけを重力に反映
+  const db = beta  - gyroBetaBase;   // 前後のズレ
+  const dg = gamma - gyroGammaBase;  // 左右のズレ
+
+  const gx = Math.max(-3, Math.min(3, dg / 18));
+  const gy = Math.max(-2, Math.min(3, db / 18));
 
   engine.gravity.x     = gx; engine.gravity.y     = gy;
   dateEngine.gravity.x = gx; dateEngine.gravity.y = gy;
