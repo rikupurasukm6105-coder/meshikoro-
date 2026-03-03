@@ -701,11 +701,11 @@ function saveDay(dateStr, items) { const s=getStore(); s[dateStr]=items; saveSto
 const { Engine,Render,Runner,Bodies,Body,World,Events,Mouse,MouseConstraint } = Matter;
 const engine = Engine.create();
 const wrap   = document.getElementById('canvas-wrap');
-let W = window.innerWidth;
-let H = window.innerHeight
-      - document.querySelector('header').offsetHeight
-      - document.getElementById('today-stats').offsetHeight
-      - 60; // action-bar の高さ分
+
+function getWH() {
+  return { W: wrap.clientWidth, H: wrap.clientHeight };
+}
+let { W, H } = getWH();
 
 const render = Render.create({
   canvas: document.getElementById('world'),
@@ -713,15 +713,16 @@ const render = Render.create({
   options: { width:W, height:H, wireframes:false, background:'transparent' }
 });
 
-const WALL = 60; // 壁の厚さを厚めに
+const WALL = 80;
 const wallOpts = { isStatic:true, render:{fillStyle:'transparent'}, friction:0.5, restitution:0.05 };
 
 function makeWalls() {
+  const {W, H} = getWH();
   return [
-    Bodies.rectangle(W/2,    H+(WALL/2),  W*3,    WALL, wallOpts), // 床
-    Bodies.rectangle(-(WALL/2), H/2,      WALL,   H*3,  wallOpts), // 左
-    Bodies.rectangle(W+(WALL/2), H/2,     WALL,   H*3,  wallOpts), // 右
-    Bodies.rectangle(W/2,    -(WALL/2),   W*3,    WALL, wallOpts), // 天井
+    Bodies.rectangle(W/2,      H+(WALL/2), W+WALL*2, WALL, wallOpts), // 床
+    Bodies.rectangle(-(WALL/2), H/2,       WALL,     H*3,  wallOpts), // 左
+    Bodies.rectangle(W+(WALL/2),H/2,       WALL,     H*3,  wallOpts), // 右
+    Bodies.rectangle(W/2,      -(WALL/2),  W+WALL*2, WALL, wallOpts), // 天井
   ];
 }
 let walls = makeWalls();
@@ -739,21 +740,15 @@ Render.run(render);
 let physBodies = [];
 
 function resizePhysics() {
-  W = window.innerWidth;
-  H = window.innerHeight
-    - document.querySelector('header').offsetHeight
-    - document.getElementById('today-stats').offsetHeight
-    - 60;
-
+  const wh = getWH();
+  W = wh.W; H = wh.H;
   render.canvas.width  = W; render.canvas.height = H;
   render.options.width = W; render.options.height = H;
 
-  // 壁を作り直す
   World.remove(engine.world, walls);
   walls = makeWalls();
   World.add(engine.world, walls);
 
-  // 画面外に出た食べ物を画面内に戻す
   physBodies.forEach(({body}) => {
     const {x, y} = body.position;
     const nx = Math.max(40, Math.min(W-40, x));
@@ -1123,21 +1118,21 @@ function showToast(msg) {
 let gyroEnabled = false;
 const BASE_GRAVITY = 1.2;
 
+// デバッグ表示用
+let gyroDebug = document.createElement('div');
+gyroDebug.style.cssText = 'position:fixed;top:60px;left:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;z-index:999;display:none;font-family:monospace;line-height:1.6;pointer-events:none;';
+document.body.appendChild(gyroDebug);
+
 function requestGyro() {
-  // iOS 13+ requires explicit permission request
   if (typeof DeviceOrientationEvent !== 'undefined' &&
       typeof DeviceOrientationEvent.requestPermission === 'function') {
     DeviceOrientationEvent.requestPermission()
       .then(state => {
-        if (state === 'granted') {
-          enableGyro();
-        } else {
-          showToast('❌ ジャイロの許可が必要です');
-        }
+        if (state === 'granted') { enableGyro(); }
+        else { showToast('❌ ジャイロの許可が必要です'); }
       })
       .catch(() => showToast('❌ ジャイロが使えません'));
   } else if ('DeviceOrientationEvent' in window) {
-    // Android / desktop — no permission needed
     enableGyro();
   } else {
     showToast('❌ このデバイスはジャイロ非対応です');
@@ -1146,13 +1141,13 @@ function requestGyro() {
 
 function enableGyro() {
   if (gyroEnabled) {
-    // toggle OFF
     gyroEnabled = false;
-    window.removeEventListener('deviceorientation', handleOrientation);
+    window.removeEventListener('deviceorientation', handleOrientation, true);
     engine.gravity.x = 0;
     engine.gravity.y = BASE_GRAVITY;
     document.getElementById('gyro-btn').classList.remove('gyro-on');
     document.getElementById('gyro-btn').textContent = '📱';
+    gyroDebug.style.display = 'none';
     showToast('📱 ジャイロ OFF');
     return;
   }
@@ -1160,28 +1155,32 @@ function enableGyro() {
   window.addEventListener('deviceorientation', handleOrientation, true);
   document.getElementById('gyro-btn').classList.add('gyro-on');
   document.getElementById('gyro-btn').textContent = '🌀';
+  gyroDebug.style.display = 'block';
   showToast('🌀 ジャイロ ON！傾けてみて！');
 }
 
 function handleOrientation(e) {
   if (!gyroEnabled) return;
 
-  // gamma = 左右傾き (-90〜90)
-  // beta  = 前後傾き (-180〜180)
-  // スマホを立てて持った状態が基準（beta≒0が垂直）
-  const gamma = e.gamma || 0;
-  const beta  = e.beta  || 0;
+  const alpha = e.alpha || 0; // 方位 0-360
+  const beta  = e.beta  || 0; // 前後 -180〜180
+  const gamma = e.gamma || 0; // 左右 -90〜90
 
-  // 左右：gammaをそのまま重力X軸に
-  const gx = Math.max(-3, Math.min(3, gamma / 25));
+  // iOSの縦持ち：beta≒0、gamma≒0 が基準
+  // 左右：gammaがそのまま左右傾き
+  const gx = Math.max(-3, Math.min(3, gamma / 20));
 
-  // 上下：betaは垂直持ち(90度)を基準に、前に傾けると上、後ろに傾けると下
-  // beta=90が通常の縦持ち → そこからのズレを使う
-  const tilt = beta - 90; // 垂直からのズレ (-180〜90)
-  const gy   = Math.max(-2, Math.min(3, tilt / 25));
+  // 上下：betaの変化をそのまま使う
+  // 前に倒す(beta増加) → 下に落ちる、後ろに倒す(beta減少) → 上に浮く
+  const gy = Math.max(-2, Math.min(3, beta / 30));
 
   engine.gravity.x = gx;
   engine.gravity.y = gy;
+
+  // デバッグ表示
+  gyroDebug.innerHTML =
+    `β:${beta.toFixed(1)} γ:${gamma.toFixed(1)}<br>` +
+    `gx:${gx.toFixed(2)} gy:${gy.toFixed(2)}`;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━
