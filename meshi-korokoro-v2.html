@@ -1497,7 +1497,7 @@ function handleMotion(e) {
   //   上部を下に  → gy負（上に転がる）  → ag.yが正に近づく  → rawGY = -ag.y/9.8
   //   机に水平    → gy≈0（ほぼ止まる）  → ag.y≈0           → rawGY ≈ 0
 
-  const rawGX = -(ag.x ?? 0) / 9.8 * 2.5;
+  const rawGX =  (ag.x ?? 0) / 9.8 * 2.5; // 左右を正しい向きに
   const rawGY = -(ag.y ?? 0) / 9.8 * 2.5; // 縦持ちでy=-9.8 → rawGY=+2.5（正常な下向き重力）
 
   const S = 0.25;
