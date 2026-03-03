@@ -513,6 +513,25 @@ input[type=file] {
 <div id="loading"><div class="spin"></div><div class="load-txt">AI解析中...</div></div>
 <div id="toast"></div>
 
+<!-- カメラUI（丸いガイド付きシャッター画面） -->
+<div id="camera-ui" style="display:none;position:fixed;inset:0;z-index:900;background:#000;flex-direction:column;align-items:center;justify-content:center;">
+  <div style="position:relative;width:100%;flex:1;overflow:hidden;">
+    <video id="camera-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+    <!-- 暗いオーバーレイ + 丸い穴 -->
+    <canvas id="camera-overlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
+    <!-- ガイドテキスト -->
+    <div style="position:absolute;top:16px;width:100%;text-align:center;color:#fff;font-family:'DotGothic16',monospace;font-size:13px;text-shadow:0 1px 4px rgba(0,0,0,0.8);">
+      丸の中に食べ物を入れてね 🍽️
+    </div>
+  </div>
+  <!-- シャッターバー -->
+  <div style="flex-shrink:0;background:#111;padding:20px 0;width:100%;display:flex;align-items:center;justify-content:center;gap:40px;">
+    <button onclick="closeCameraUI()" style="background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:50px;height:50px;color:#fff;font-size:22px;cursor:pointer;">✕</button>
+    <button id="shutter-btn" onclick="takePhoto()" style="background:#fff;border:none;border-radius:50%;width:70px;height:70px;font-size:32px;cursor:pointer;box-shadow:0 0 0 4px rgba(255,255,255,0.3);">📸</button>
+    <div style="width:50px;"></div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
@@ -909,14 +928,144 @@ function resizeDatePhysics() {
   });
 }
 
-// ══ 共通ファイル入力 ══
-let fileInputTarget = 'today'; // 'today' or 'date'
+// ══ カメラUI ══
+let cameraStream   = null;
+let cameraTarget   = 'today'; // 'today' or 'date'
 
 function triggerFileInput(target) {
-  fileInputTarget = target;
-  const inp = document.getElementById('shared-file-input');
-  inp.value = ''; // 同じファイルを再選択できるようリセット
-  inp.click();
+  // カメラが使える場合はカメラUI、使えない場合はファイル選択
+  cameraTarget = target;
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    openCameraUI();
+  } else {
+    // フォールバック: ファイル選択
+    const inp = document.getElementById('shared-file-input');
+    inp.value = '';
+    inp.click();
+  }
+}
+
+function openCameraUI() {
+  const ui = document.getElementById('camera-ui');
+  ui.style.display = 'flex';
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+  }).then(stream => {
+    cameraStream = stream;
+    const video = document.getElementById('camera-video');
+    video.srcObject = stream;
+    video.play();
+    // オーバーレイ描画開始
+    requestAnimationFrame(drawCameraOverlay);
+  }).catch(() => {
+    closeCameraUI();
+    // フォールバック
+    const inp = document.getElementById('shared-file-input');
+    inp.value = ''; inp.click();
+  });
+}
+
+function drawCameraOverlay() {
+  const ui = document.getElementById('camera-ui');
+  if (!cameraStream || ui.style.display === 'none') return;
+
+  const canvas  = document.getElementById('camera-overlay');
+  const video   = document.getElementById('camera-video');
+  const w = video.offsetWidth;
+  const h = video.offsetHeight;
+  if (w === 0 || h === 0) { requestAnimationFrame(drawCameraOverlay); return; }
+
+  canvas.width  = w;
+  canvas.height = h;
+  const ctx2 = canvas.getContext('2d');
+
+  const radius = Math.min(w, h) * 0.42;
+  const cx = w / 2;
+  const cy = h / 2;
+
+  ctx2.clearRect(0, 0, w, h);
+
+  // 暗いオーバーレイ（丸い穴を開ける）
+  ctx2.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx2.fillRect(0, 0, w, h);
+  ctx2.globalCompositeOperation = 'destination-out';
+  ctx2.beginPath();
+  ctx2.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx2.fill();
+  ctx2.globalCompositeOperation = 'source-over';
+
+  // 丸い枠線（白）
+  ctx2.beginPath();
+  ctx2.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx2.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx2.lineWidth = 3;
+  ctx2.stroke();
+
+  requestAnimationFrame(drawCameraOverlay);
+}
+
+function closeCameraUI() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  document.getElementById('camera-ui').style.display = 'none';
+}
+
+function takePhoto() {
+  const video  = document.getElementById('camera-video');
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+  if (!w || !h) return;
+
+  // 画面上の円の大きさをvideo座標に変換
+  const displayW   = video.offsetWidth;
+  const displayH   = video.offsetHeight;
+  const scaleX = w / displayW;
+  const scaleY = h / displayH;
+  const radius     = Math.min(displayW, displayH) * 0.42;
+  const cx = displayW / 2;
+  const cy = displayH / 2;
+
+  // 丸い部分だけを切り抜いてcanvasに描画
+  const size = Math.round(radius * 2 * Math.max(scaleX, scaleY));
+  const offscreen = document.createElement('canvas');
+  offscreen.width  = size;
+  offscreen.height = size;
+  const oc = offscreen.getContext('2d');
+
+  // 円形クリップ
+  oc.beginPath();
+  oc.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+  oc.clip();
+
+  // videoから円の範囲だけ切り取って描画
+  const srcX = Math.round((cx - radius) * scaleX);
+  const srcY = Math.round((cy - radius) * scaleY);
+  const srcS = Math.round(radius * 2 * Math.max(scaleX, scaleY));
+  oc.drawImage(video, srcX, srcY, srcS, srcS, 0, 0, size, size);
+
+  const base64 = offscreen.toDataURL('image/jpeg', 0.85).split(',')[1];
+
+  closeCameraUI();
+
+  // 食べ物データとして追加（AIなし・写真そのまま）
+  const food = {
+    name:        '📸 写真',
+    emoji:       '📸',
+    calories:    0,
+    color:       '#d4622a',
+    shape:       'circle',
+    photoBase64: base64,
+  };
+
+  if (cameraTarget === 'date') {
+    addDateFoodItem(food);
+  } else {
+    addFoodItem(food);
+  }
+  showToast('📸 写真を追加しました！');
 }
 
 async function handleSharedFile(e) {
@@ -1348,13 +1497,13 @@ function handleOrientation(e) {
   // 左右: gamma（右傾け→右に転がる）
   const gx = Math.max(-3, Math.min(3, smoothGamma / 15));
 
-  // 上下: beta=80が縦持ち基準 → gy=1.5
-  // 上部を下に傾ける(beta増加) → gy増加（下に転がる）
-  // 下部を下に傾ける(beta減少) → gy減少（上に転がる）
-  // 最小値0.2で完全に上固定にはならないようにする
+  // 上下: beta=80が縦持ち基準
+  // 「上部を下に傾ける」= betaが増える → 上に転がる(gy負)
+  // 「下部を下に傾ける」= betaが減る   → 下に転がる(gy正)
+  // ※符号を反転させる
   const BETA_BASE = 80;
   const tilt = smoothBeta - BETA_BASE;
-  const gy = Math.max(0.2, Math.min(3.5, 1.5 + tilt / 15));
+  const gy = Math.max(-2.5, Math.min(3.5, -(tilt / 15)));
 
   engine.gravity.x     = gx; engine.gravity.y     = gy;
   dateEngine.gravity.x = gx; dateEngine.gravity.y = gy;
