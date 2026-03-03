@@ -688,7 +688,7 @@ const render = Render.create({
   options: { width:W, height:H, wireframes:false, background:'transparent' }
 });
 
-const wallOpts = { isStatic:true, render:{fillStyle:'transparent'}, friction:0.4, restitution:0.3 };
+const wallOpts = { isStatic:true, render:{fillStyle:'transparent'}, friction:0.4, restitution:0.15 };
 let wGround  = Bodies.rectangle(W/2, H+25,  W*3, 50, wallOpts);
 let wLeft    = Bodies.rectangle(-25,  H/2,  50, H*3, wallOpts);
 let wRight   = Bodies.rectangle(W+25, H/2,  50, H*3, wallOpts);
@@ -747,12 +747,12 @@ function addPhysBody(food) {
   let body;
   if (isRound) {
     body = Bodies.circle(x, -sz, sz, {
-      restitution:0.55, friction:0.35, frictionAir:0.008,
+      restitution:0.25, friction:0.4, frictionAir:0.01,
       render:{ fillStyle: food.color||'#ff6b35' }
     });
   } else {
     body = Bodies.rectangle(x, -sz, sz*1.9, sz*1.25, {
-      restitution:0.3, friction:0.5, frictionAir:0.012,
+      restitution:0.15, friction:0.5, frictionAir:0.015,
       chamfer:{radius:10},
       render:{ fillStyle: food.color||'#ff6b35' }
     });
@@ -1122,17 +1122,22 @@ function enableGyro() {
 function handleOrientation(e) {
   if (!gyroEnabled) return;
 
-  // gamma = left/right tilt (-90 to 90)
-  // beta  = front/back tilt (-180 to 180)
-  const gamma = e.gamma || 0;  // X axis (left/right)
-  const beta  = e.beta  || 0;  // Y axis (front/back)
+  // gamma = 左右傾き (-90〜90)
+  // beta  = 前後傾き (-180〜180)
+  // スマホを立てて持った状態が基準（beta≒0が垂直）
+  const gamma = e.gamma || 0;
+  const beta  = e.beta  || 0;
 
-  // Clamp and normalize to reasonable gravity range
-  const gx = Math.max(-3, Math.min(3, gamma / 20));
-  const gy = Math.max(-1, Math.min(3, beta  / 20));
+  // 左右：gammaをそのまま重力X軸に
+  const gx = Math.max(-3, Math.min(3, gamma / 25));
+
+  // 上下：betaは垂直持ち(90度)を基準に、前に傾けると上、後ろに傾けると下
+  // beta=90が通常の縦持ち → そこからのズレを使う
+  const tilt = beta - 90; // 垂直からのズレ (-180〜90)
+  const gy   = Math.max(-2, Math.min(3, tilt / 25));
 
   engine.gravity.x = gx;
-  engine.gravity.y = gy < 0.1 ? 0.1 : gy; // never let gravity fully flip negative
+  engine.gravity.y = gy;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━
