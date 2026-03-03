@@ -331,6 +331,40 @@ canvas { display:block; position:absolute; top:0; left:0; }
       </div>
     </div>
 
+    <!-- DATE VIEW（過去・未来の日付用） -->
+    <div id="view-date" class="view">
+      <div id="date-stats" style="flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:12px;align-items:center;">
+        <button class="btn btn-secondary" style="padding:6px 10px;font-size:18px;" onclick="showView('calendar')">‹</button>
+        <div style="flex:1;text-align:center;">
+          <div id="date-view-label" style="font-family:'DotGothic16',monospace;font-size:13px;color:var(--accent2);"></div>
+        </div>
+        <div class="t-stat">
+          <div class="t-stat-num" id="date-stat-count">0</div>
+          <div class="t-stat-lbl">食事数</div>
+        </div>
+        <div class="t-stat">
+          <div class="t-stat-num" id="date-stat-cal">0</div>
+          <div class="t-stat-lbl">kcal</div>
+        </div>
+      </div>
+
+      <div id="date-canvas-wrap" style="flex:1;position:relative;overflow:hidden;min-height:0;">
+        <div id="date-hint-msg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);text-align:center;color:rgba(44,33,24,0.2);pointer-events:none;">
+          <div style="font-size:56px;margin-bottom:8px;">🍽️</div>
+          <p style="font-size:13px;line-height:1.7;">📸 撮影 または ✏️ 入力で<br>この日の食事を記録しよう</p>
+        </div>
+        <canvas id="date-world"></canvas>
+      </div>
+
+      <div id="date-action-bar" style="flex-shrink:0;background:var(--panel);border-top:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;align-items:center;">
+        <input type="file" id="date-file-input" accept="image/*" capture="environment" onchange="handleDateFile(event)">
+        <button class="btn btn-primary" onclick="document.getElementById('date-file-input').click()">
+          📸 撮影して追加
+        </button>
+        <button class="btn btn-secondary" onclick="openManualModal(currentDateViewKey)">✏️ 手入力</button>
+      </div>
+    </div>
+
     <!-- CALENDAR VIEW -->
     <div id="view-calendar" class="view">
       <div id="cal-header">
@@ -663,17 +697,205 @@ function hideFoodMenu() {
 }
 
 // ══════════════════════════════════════
-// VIEW SWITCH
+// DATE VIEW（過去・未来の日付用物理エンジン）
 // ══════════════════════════════════════
+const dateEngine   = Engine.create({ gravity:{ x:0, y:1.5 } });
+const dateCanvasEl = document.getElementById('date-world');
+const dateWrapEl   = document.getElementById('date-canvas-wrap');
+const dateCtx      = dateCanvasEl.getContext('2d');
+let dateW = 0, dateH = 0;
+let dateBodies = [];
+let currentDateViewKey = null;
+
+// 日付ビュー用壁
+let dateWalls = [];
+function rebuildDateWalls() {
+  if (dateWalls.length) World.remove(dateEngine.world, dateWalls);
+  const wo = { isStatic:true, friction:0.5, restitution:0.05 };
+  dateWalls = [
+    Bodies.rectangle(dateW/2,        dateH+THICK/2,  dateW+THICK*2, THICK,     wo),
+    Bodies.rectangle(-THICK/2,       dateH/2,        THICK,         dateH*2,   wo),
+    Bodies.rectangle(dateW+THICK/2,  dateH/2,        THICK,         dateH*2,   wo),
+    Bodies.rectangle(dateW/2,        -THICK/2,       dateW+THICK*2, THICK,     wo),
+  ];
+  World.add(dateEngine.world, dateWalls);
+}
+
+const dateMouse = Mouse.create(dateCanvasEl);
+const dateMC = MouseConstraint.create(dateEngine, { mouse:dateMouse, constraint:{ stiffness:0.15 } });
+World.add(dateEngine.world, dateMC);
+Runner.run(Runner.create(), dateEngine);
+
+// 日付ビューのタップ
+let dateTouchMoved = false;
+dateCanvasEl.addEventListener('touchstart', () => { dateTouchMoved = false; }, { passive:true });
+dateCanvasEl.addEventListener('touchmove',  () => { dateTouchMoved = true;  }, { passive:true });
+dateCanvasEl.addEventListener('touchend', (e) => {
+  if (dateTouchMoved) return;
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  const r = dateCanvasEl.getBoundingClientRect();
+  checkDateBodyTap(t.clientX - r.left, t.clientY - r.top);
+}, { passive:false });
+dateCanvasEl.addEventListener('click', (e) => {
+  const r = dateCanvasEl.getBoundingClientRect();
+  checkDateBodyTap(e.clientX - r.left, e.clientY - r.top);
+});
+
+function checkDateBodyTap(mx, my) {
+  let hit = false;
+  for (let i = dateBodies.length-1; i >= 0; i--) {
+    const { body, food } = dateBodies[i];
+    const { x, y } = body.position;
+    if (Math.sqrt((mx-x)**2+(my-y)**2) < (body._sz||42)*1.3) {
+      showDateFoodMenu(food);
+      hit = true; break;
+    }
+  }
+  if (!hit) hideFoodMenu();
+}
+
+function showDateFoodMenu(food) {
+  menuFood = food;
+  document.getElementById('fm-emoji').textContent = food.emoji || '🍽️';
+  document.getElementById('fm-name').textContent  = food.name  || '';
+  document.getElementById('food-menu').classList.add('show');
+  document.getElementById('fm-edit').onclick = () => {
+    hideFoodMenu();
+    openEditModal(currentDateViewKey, food.id);
+  };
+  document.getElementById('fm-delete').onclick = () => {
+    hideFoodMenu();
+    deleteDateItem(currentDateViewKey, food.id);
+  };
+  clearTimeout(menuAutoHide);
+  menuAutoHide = setTimeout(hideFoodMenu, 5000);
+}
+
+function deleteDateItem(dateStr, itemId) {
+  if (!confirm('削除しますか？')) return;
+  let items = getDay(dateStr).filter(i => i.id !== itemId);
+  saveDay(dateStr, items);
+  reloadDatePhysics(dateStr);
+  renderCalendar();
+  showToast('🗑️ 削除しました');
+}
+
+// 日付ビューの描画ループ
+function dateDraw() {
+  requestAnimationFrame(dateDraw);
+  dateCtx.clearRect(0, 0, dateCanvasEl.width, dateCanvasEl.height);
+  dateBodies.forEach(({ body, food }) => {
+    if (!body || !food) return;
+    const { x, y } = body.position;
+    if (x < -200 || x > dateW+200 || y < -200 || y > dateH+200) return;
+    const sz = body._sz || 42;
+    dateCtx.save();
+    dateCtx.translate(x, y);
+    dateCtx.rotate(body.angle);
+    dateCtx.font = `${Math.round(sz*1.6)}px serif`;
+    dateCtx.textAlign = 'center';
+    dateCtx.textBaseline = 'middle';
+    dateCtx.fillText(food.emoji || '🍽️', 0, 0);
+    dateCtx.restore();
+  });
+}
+dateDraw();
+
+function addDatePhysBody(food) {
+  const sz  = 32 + Math.random() * 12;
+  const pad = sz + 20;
+  const x   = pad + Math.random() * Math.max(10, dateW - pad*2);
+  const body = Bodies.circle(x, sz+10, sz, { restitution:0.2, friction:0.4, frictionAir:0.01 });
+  body._sz = sz; body._food = food;
+  Body.setVelocity(body, { x:(Math.random()-0.5)*2, y:1.5 });
+  World.add(dateEngine.world, body);
+  dateBodies.push({ body, food });
+}
+
+function reloadDatePhysics(dateStr) {
+  dateBodies.forEach(({ body }) => World.remove(dateEngine.world, body));
+  dateBodies = [];
+  const items = getDay(dateStr);
+  items.forEach(f => addDatePhysBody(f));
+  updateDateStats(dateStr);
+  document.getElementById('date-hint-msg').style.display = items.length ? 'none' : '';
+}
+
+function updateDateStats(dateStr) {
+  const items = getDay(dateStr);
+  const total = items.reduce((a,b)=>a+(b.calories||0), 0);
+  document.getElementById('date-stat-count').textContent = items.length;
+  document.getElementById('date-stat-cal').textContent   = total;
+}
+
+function resizeDatePhysics() {
+  const r = dateWrapEl.getBoundingClientRect();
+  dateW = Math.floor(r.width)  || window.innerWidth;
+  dateH = Math.floor(r.height) || 400;
+  dateCanvasEl.width  = dateW;
+  dateCanvasEl.height = dateH;
+  rebuildDateWalls();
+  dateBodies.forEach(({ body }) => {
+    const { x, y } = body.position;
+    Body.setPosition(body, { x:Math.max(50,Math.min(dateW-50,x)), y:Math.max(50,Math.min(dateH-50,y)) });
+    Body.setVelocity(body, { x:0, y:0 });
+  });
+}
+
+// 日付ファイルアップロード
+async function handleDateFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  e.target.value = '';
+  document.getElementById('loading').classList.add('show');
+  try {
+    const b64  = await toBase64(file);
+    const food = await analyzeFood(b64);
+    addDateFoodItem(food);
+    showToast(`🍴 ${food.name} を追加しました！`);
+  } catch(err) {
+    console.error(err);
+    showToast('❌ 認識できませんでした。手入力をお試しください。');
+  } finally {
+    document.getElementById('loading').classList.remove('show');
+  }
+}
+
+function addDateFoodItem(food) {
+  if (!currentDateViewKey) return;
+  const items = getDay(currentDateViewKey);
+  const item  = { id:Date.now(), shape:'circle', ...food };
+  items.push(item);
+  saveDay(currentDateViewKey, items);
+  addDatePhysBody(item);
+  document.getElementById('date-hint-msg').style.display = 'none';
+  updateDateStats(currentDateViewKey);
+  renderCalendar();
+}
+
+// 日付ビューを開く
+function openDateView(ds) {
+  currentDateViewKey = ds;
+  const [y,m,d] = ds.split('-');
+  document.getElementById('date-view-label').textContent = `${parseInt(y)}年${parseInt(m)}月${parseInt(d)}日`;
+  showView('date');
+  setTimeout(() => {
+    resizeDatePhysics();
+    reloadDatePhysics(ds);
+  }, 80);
+}
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  document.querySelectorAll('.nav-tab')[name==='today'?0:1].classList.add('active');
-  if (name === 'calendar') renderCalendar();
   if (name === 'today') {
+    document.querySelectorAll('.nav-tab')[0].classList.add('active');
     setTimeout(() => { resizePhysics(); updateTodayStats(); }, 50);
+  } else if (name === 'calendar') {
+    document.querySelectorAll('.nav-tab')[1].classList.add('active');
+    renderCalendar();
   }
+  // date viewはタブ選択なし
 }
 
 // ══════════════════════════════════════
@@ -802,6 +1024,10 @@ function submitManual() {
     addPhysBody(item);
     document.getElementById('hint-msg').style.display = 'none';
     updateTodayStats();
+  } else if (targetDate === currentDateViewKey) {
+    addDatePhysBody(item);
+    document.getElementById('date-hint-msg').style.display = 'none';
+    updateDateStats(targetDate);
   }
 
   // カレンダーと詳細を更新
@@ -849,6 +1075,7 @@ function submitEdit() {
   saveDay(dateStr, items);
 
   if (dateStr === todayKey()) reloadTodayPhysics();
+  else if (dateStr === currentDateViewKey) reloadDatePhysics(dateStr);
   if (document.getElementById('day-detail').classList.contains('open')) renderDayDetail(dateStr);
   renderCalendar();
   closeEditModal();
@@ -919,8 +1146,12 @@ function renderCalendar() {
       cell.appendChild(kc);
     }
 
-    // 全日付タップで開けるようにする
-    cell.onclick = () => openDayDetail(ds);
+    // 全日付タップで開く（今日はtodayビュー、それ以外はdateビュー）
+    if (ds === todayKey()) {
+      cell.onclick = () => showView('today');
+    } else {
+      cell.onclick = () => openDateView(ds);
+    }
     grid.appendChild(cell);
   }
 }
@@ -1007,8 +1238,8 @@ function enableGyro() {
   if (gyroEnabled) {
     gyroEnabled = false;
     window.removeEventListener('deviceorientation', handleOrientation);
-    engine.gravity.x = 0;
-    engine.gravity.y = 1.5;
+    engine.gravity.x = 0; engine.gravity.y = 1.5;
+    dateEngine.gravity.x = 0; dateEngine.gravity.y = 1.5;
     document.getElementById('gyro-btn').classList.remove('gyro-on');
     document.getElementById('gyro-btn').textContent = '📱';
     document.getElementById('gyro-debug').style.display = 'none';
@@ -1019,26 +1250,22 @@ function enableGyro() {
   window.addEventListener('deviceorientation', handleOrientation, true);
   document.getElementById('gyro-btn').classList.add('gyro-on');
   document.getElementById('gyro-btn').textContent = '🌀';
-  document.getElementById('gyro-debug').style.display = 'block';
   showToast('🌀 ジャイロ ON！傾けてみて！');
 }
 
 function handleOrientation(e) {
   if (!gyroEnabled) return;
-  const alpha = Math.round(e.alpha || 0);
-  const beta  = Math.round(e.beta  || 0);
-  const gamma = Math.round(e.gamma || 0);
+  const beta  = e.beta  || 0;
+  const gamma = e.gamma || 0;
 
-  // デバッグ表示
-  const dbg = document.getElementById('gyro-debug');
-  if (dbg) dbg.textContent = `α:${alpha} β:${beta} γ:${gamma} | gx:${(gamma/20).toFixed(2)} gy:${((beta-90)/20).toFixed(2)}`;
-
-  // 縦持ち基準(beta≈90)からのズレで重力計算
+  // beta=80が縦持ち基準（実測値）
+  // 上部を下に傾ける = beta増加 → 下に転がる(gy正)
+  // 下部を下に傾ける = beta減少 → 上に転がる(gy負)
   const gx = Math.max(-2.5, Math.min(2.5,  gamma       / 20));
-  const gy = Math.max(-2.0, Math.min(2.5, (beta - 90)  / 20));
+  const gy = Math.max(-2.0, Math.min(2.5, (beta - 80)  / 20));
 
-  engine.gravity.x = gx;
-  engine.gravity.y = gy;
+  engine.gravity.x     = gx; engine.gravity.y     = gy;
+  dateEngine.gravity.x = gx; dateEngine.gravity.y = gy;
 }
 
 // ══════════════════════════════════════
