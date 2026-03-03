@@ -12,29 +12,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5f0e8">
 <link rel="manifest" href="manifest.json">
-
-<!-- iOSホーム画面アイコン（絵文字をCanvasで生成） -->
 <link rel="apple-touch-icon" id="apple-icon" href="">
 
 <!-- 横画面ロック -->
 <style>
-  @media screen and (orientation: landscape) {
-    body::before {
-      content: '📱 縦向きにしてください';
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      background: #f5f0e8;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      font-family: 'Kaisei Tokumin', serif;
-      color: #2c2118;
-    }
-    body > * { display: none !important; }
-    body::before { display: flex !important; }
-  }
+@media screen and (orientation: landscape) {
+  #rotate-msg { display:flex !important; }
+  #app-root    { display:none !important; }
+}
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
@@ -42,588 +27,352 @@
 @import url('https://fonts.googleapis.com/css2?family=Kaisei+Tokumin:wght@400;700;800&family=DotGothic16&display=swap');
 
 :root {
-  --bg: #f5f0e8;
-  --panel: #efe9dc;
-  --card: #ffffff;
+  --bg:     #f5f0e8;
+  --panel:  #efe9dc;
+  --card:   #ffffff;
   --accent: #d4622a;
-  --accent2: #b8860b;
-  --green: #2a7a5e;
-  --blue: #2563a8;
-  --text: #2c2118;
-  --muted: #8a7560;
+  --accent2:#b8860b;
+  --green:  #2a7a5e;
+  --text:   #2c2118;
+  --muted:  #8a7560;
   --border: rgba(180,120,60,0.18);
 }
 
-* { margin:0; padding:0; box-sizing:border-box; }
-html, body { height:100%; overflow:hidden; }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; overflow:hidden; background:var(--bg); }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Kaisei Tokumin', serif;
-  display: flex;
-  flex-direction: column;
+/* 横向きメッセージ */
+#rotate-msg {
+  display:none;
+  position:fixed; inset:0; z-index:9999;
+  background:var(--bg);
+  align-items:center; justify-content:center;
+  flex-direction:column; gap:12px;
+  font-family:'Kaisei Tokumin',serif; color:var(--text); font-size:18px;
+}
+
+#app-root {
+  display:flex; flex-direction:column; height:100%;
 }
 
 /* ── HEADER ── */
 header {
-  height: 54px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  gap: 12px;
-  flex-shrink: 0;
-  z-index: 50;
+  height:54px; flex-shrink:0;
+  background:var(--panel);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center;
+  padding:0 16px; gap:12px; z-index:50;
 }
-.logo {
-  font-family: 'DotGothic16', monospace;
-  font-size: 20px;
-  color: var(--accent);
-  letter-spacing: 2px;
-  flex-shrink: 0;
-}
-.logo em { color: var(--accent2); font-style: normal; }
-
-.nav-tabs {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-}
+.logo { font-family:'DotGothic16',monospace; font-size:20px; color:var(--accent); letter-spacing:2px; }
+.logo em { color:var(--accent2); font-style:normal; }
+.nav-tabs { display:flex; gap:4px; margin-left:auto; }
 .nav-tab {
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--muted);
-  font-family: 'DotGothic16', monospace;
-  font-size: 12px;
-  padding: 5px 12px;
-  cursor: pointer;
-  transition: all 0.2s;
+  background:none; border:1px solid transparent; border-radius:8px;
+  color:var(--muted); font-family:'DotGothic16',monospace; font-size:12px;
+  padding:5px 12px; cursor:pointer; transition:all 0.2s;
 }
-.nav-tab.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(255,107,53,0.1);
-}
-.nav-tab:hover:not(.active) { color: var(--text); border-color: var(--border); }
+.nav-tab.active { border-color:var(--accent); color:var(--accent); background:rgba(212,98,42,0.08); }
 
-/* ── MAIN ── */
-#app { flex:1; overflow:hidden; position:relative; }
-
-.view { display:none; height:100%; }
+/* ── VIEWS ── */
+#app { flex:1; overflow:hidden; position:relative; min-height:0; }
+.view { display:none; height:100%; flex-direction:column; }
 .view.active { display:flex; }
 
-/* ══════════════════════════
-   VIEW: TODAY (Physics)
-══════════════════════════ */
-#view-today {
-  flex-direction: column;
-  position: relative;
+/* ── TODAY ── */
+#today-stats {
+  flex-shrink:0; background:var(--panel);
+  border-bottom:1px solid var(--border);
+  padding:8px 16px; display:flex; gap:20px; align-items:center;
 }
+.t-stat { text-align:center; }
+.t-stat-num { font-size:20px; font-weight:800; color:var(--accent2); line-height:1; }
+.t-stat-lbl { font-size:10px; color:var(--muted); margin-top:2px; font-family:'DotGothic16',monospace; }
 
-#canvas-wrap {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-}
-canvas { display:block; }
+#canvas-wrap { flex:1; position:relative; overflow:hidden; min-height:0; }
+canvas { display:block; position:absolute; top:0; left:0; }
 
 #hint-msg {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%,-60%);
-  text-align: center;
-  color: rgba(44,33,24,0.2);
-  pointer-events: none;
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-60%);
+  text-align:center; color:rgba(44,33,24,0.2); pointer-events:none;
 }
-#hint-msg .big { font-size: 56px; margin-bottom: 8px; }
-#hint-msg p { font-size: 13px; line-height: 1.7; }
+#hint-msg .big { font-size:56px; margin-bottom:8px; }
+#hint-msg p { font-size:13px; line-height:1.7; }
 
-/* Bottom action bar */
+/* ── ACTION BAR ── */
 #action-bar {
-  flex-shrink: 0;
-  background: var(--panel);
-  border-top: 1px solid var(--border);
-  padding: 10px 16px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
+  flex-shrink:0; background:var(--panel);
+  border-top:1px solid var(--border);
+  padding:10px 16px; display:flex; gap:8px; align-items:center;
 }
-#action-bar input[type=file] { display:none; }
+#file-input { display:none; }
 
 .btn {
-  border: none;
-  border-radius: 10px;
-  padding: 10px 16px;
-  font-family: 'DotGothic16', monospace;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.18s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
+  border:none; border-radius:10px; padding:10px 16px;
+  font-family:'DotGothic16',monospace; font-size:12px;
+  cursor:pointer; transition:all 0.18s;
+  display:flex; align-items:center; gap:6px; white-space:nowrap;
 }
-.btn:active { transform: scale(0.95); }
-
+.btn:active { transform:scale(0.95); }
 .btn-primary {
-  background: var(--accent);
-  color: #fff;
-  flex: 1;
-  justify-content: center;
-  font-size: 13px;
-  box-shadow: 0 3px 16px rgba(255,107,53,0.35);
+  background:var(--accent); color:#fff; flex:1; justify-content:center;
+  font-size:13px; box-shadow:0 3px 16px rgba(212,98,42,0.3);
 }
-.btn-primary:hover { box-shadow: 0 4px 24px rgba(255,107,53,0.55); }
-
 .btn-secondary {
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background:var(--card); color:var(--text); border:1px solid var(--border);
 }
-.btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+.btn-secondary:hover { border-color:var(--accent2); }
 
-/* Today stats strip */
-#today-stats {
-  flex-shrink: 0;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  padding: 8px 16px;
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-.t-stat { text-align: center; }
-.t-stat-num { font-size: 20px; font-weight: 800; color: var(--accent2); line-height: 1; }
-.t-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: 'DotGothic16', monospace; }
-
-/* Food items floating labels */
-.phys-label {
-  position: absolute;
-  background: rgba(245,240,232,0.92);
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 10px;
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 10;
-  transition: opacity 0.3s;
-  color: var(--text);
-}
-
-/* ══════════════════════════
-   VIEW: CALENDAR
-══════════════════════════ */
-#view-calendar {
-  flex-direction: column;
-  overflow: hidden;
-}
-
-#cal-header {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-}
-#cal-month-label {
-  font-family: 'DotGothic16', monospace;
-  font-size: 16px;
-  color: var(--accent2);
-}
-.cal-nav-btn {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  width: 32px; height: 32px;
-  cursor: pointer;
-  font-size: 16px;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
-}
-.cal-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-#cal-grid-wrap {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-}
-
-.cal-dow-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin-bottom: 4px;
-}
-.cal-dow {
-  text-align: center;
-  font-family: 'DotGothic16', monospace;
-  font-size: 10px;
-  color: var(--muted);
-  padding: 4px 0;
-}
-
-.cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.cal-cell {
-  aspect-ratio: 1;
-  background: var(--card);
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 4px;
-  cursor: pointer;
-  transition: all 0.15s;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: 52px;
-}
-.cal-cell:hover { border-color: var(--accent); }
-.cal-cell.today { border-color: var(--accent2); }
-.cal-cell.selected { background: rgba(255,107,53,0.15); border-color: var(--accent); }
-.cal-cell.empty { background: transparent; cursor: default; border-color: transparent; }
-.cal-cell.has-data { background: var(--card); }
-
-.cal-day-num {
-  font-size: 11px;
-  color: var(--muted);
-  font-family: 'DotGothic16', monospace;
-  line-height: 1;
-}
-.cal-cell.today .cal-day-num { color: var(--accent2); font-weight: 700; }
-
-.cal-emojis {
-  font-size: 13px;
-  line-height: 1.3;
-  flex: 1;
-  overflow: hidden;
-  word-break: break-all;
-}
-.cal-kcal {
-  font-size: 9px;
-  color: var(--green);
-  font-family: 'DotGothic16', monospace;
-  margin-top: auto;
-}
-
-/* Day detail panel */
-#day-detail {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: none;
-  align-items: flex-end;
-}
-#day-detail.open { display: flex; }
-#day-detail-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(30,15,5,0.45);
-}
-#day-detail-sheet {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-height: 70vh;
-  background: var(--panel);
-  border-top: 2px solid var(--accent);
-  border-radius: 16px 16px 0 0;
-  padding: 16px;
-  overflow-y: auto;
-  animation: slideUp 0.25s ease;
-}
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-#day-detail-title {
-  font-family: 'DotGothic16', monospace;
-  color: var(--accent2);
-  font-size: 14px;
-  margin-bottom: 12px;
-}
-#day-detail-summary {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 14px;
-}
-.ds-stat { text-align: center; flex: 1; background: var(--card); border-radius: 8px; padding: 8px; }
-.ds-num { font-size: 20px; font-weight: 800; color: var(--accent); }
-.ds-lbl { font-size: 10px; color: var(--muted); font-family: 'DotGothic16', monospace; }
-#day-detail-list { display: flex; flex-direction: column; gap: 8px; }
-
-.detail-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--card);
-  border-radius: 10px;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  transition: border-color 0.15s;
-}
-.detail-item:hover { border-color: var(--border); }
-.detail-emoji { font-size: 26px; flex-shrink: 0; }
-.detail-info { flex: 1; }
-.detail-name { font-size: 14px; font-weight: 700; }
-.detail-cal { font-size: 11px; color: var(--green); font-family: 'DotGothic16', monospace; }
-.detail-actions { display: flex; gap: 6px; }
-.icon-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--muted);
-  width: 28px; height: 28px;
-  cursor: pointer;
-  font-size: 13px;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
-}
-.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
-.icon-btn.del:hover { border-color: #b42820; color: #b42820; }
-
-/* ══════════════════════════
-   MODALS
-══════════════════════════ */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  background: rgba(30,15,5,0.5);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-.modal-overlay.open { display: flex; }
-
-.modal {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 20px;
-  width: 100%;
-  max-width: 360px;
-  animation: fadeInScale 0.2s ease;
-}
-@keyframes fadeInScale {
-  from { opacity:0; transform:scale(0.93); }
-  to { opacity:1; transform:scale(1); }
-}
-.modal h3 {
-  font-family: 'DotGothic16', monospace;
-  color: var(--accent2);
-  font-size: 14px;
-  margin-bottom: 14px;
-}
-
-.form-group { margin-bottom: 12px; }
-.form-group label {
-  display: block;
-  font-size: 11px;
-  color: var(--muted);
-  font-family: 'DotGothic16', monospace;
-  margin-bottom: 5px;
-}
-.form-group input, .form-group select {
-  width: 100%;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  padding: 9px 12px;
-  font-family: 'Kaisei Tokumin', serif;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.form-group input:focus, .form-group select:focus {
-  border-color: var(--accent);
-}
-.form-group input[type=number]::-webkit-inner-spin-button { opacity:1; }
-
-.emoji-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
-.emoji-opt {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  width: 34px; height: 34px;
-  font-size: 18px;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.12s;
-}
-.emoji-opt.selected { border-color: var(--accent); background: rgba(255,107,53,0.15); }
-.emoji-opt:hover { border-color: var(--accent2); }
-
-.modal-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-}
-.modal-actions .btn { flex: 1; justify-content: center; }
-.btn-danger { background: rgba(180,40,30,0.1); color: #b42820; border: 1px solid rgba(180,40,30,0.25); }
-.btn-cancel { background: var(--card); color: var(--muted); border: 1px solid var(--border); }
-
-/* ── Loading ── */
-#loading {
-  position: fixed;
-  inset: 0;
-  z-index: 400;
-  background: rgba(245,240,232,0.88);
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-}
-#loading.show { display: flex; }
-.spin {
-  width: 44px; height: 44px;
-  border: 3px solid rgba(255,107,53,0.2);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.load-txt { font-family: 'DotGothic16', monospace; font-size: 13px; color: var(--accent); letter-spacing: 2px; }
-
-/* ── Toast ── */
-#toast {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%) translateY(10px);
-  background: var(--card);
-  border: 1px solid var(--accent);
-  border-radius: 12px;
-  padding: 9px 18px;
-  font-size: 13px;
-  opacity: 0;
-  transition: all 0.28s;
-  z-index: 500;
-  pointer-events: none;
-  white-space: nowrap;
-}
-#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-/* scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-/* Gyro button active */
+/* ジャイロボタン */
 #gyro-btn.gyro-on {
-  border-color: var(--green);
-  color: var(--green);
-  background: rgba(42,122,94,0.12);
-  animation: gyroPulse 1.8s ease-in-out infinite;
+  border-color:var(--green); color:var(--green);
+  background:rgba(42,122,94,0.1);
+  animation:gyroPulse 1.8s ease-in-out infinite;
 }
 @keyframes gyroPulse {
-  0%,100% { box-shadow: 0 0 0 0 rgba(42,122,94,0.3); }
-  50%      { box-shadow: 0 0 0 6px rgba(42,122,94,0); }
+  0%,100% { box-shadow:0 0 0 0 rgba(42,122,94,0.3); }
+  50%      { box-shadow:0 0 0 6px rgba(42,122,94,0); }
 }
+
+/* ── CALENDAR ── */
+#view-calendar { overflow:hidden; }
+#cal-header {
+  flex-shrink:0; display:flex; align-items:center;
+  justify-content:space-between; padding:14px 20px;
+  background:var(--panel); border-bottom:1px solid var(--border);
+}
+#cal-month-label { font-family:'DotGothic16',monospace; font-size:16px; color:var(--accent2); }
+.cal-nav-btn {
+  background:var(--card); border:1px solid var(--border); border-radius:8px;
+  color:var(--text); width:32px; height:32px; cursor:pointer; font-size:16px;
+  display:flex; align-items:center; justify-content:center; transition:all 0.15s;
+}
+.cal-nav-btn:hover { border-color:var(--accent); color:var(--accent); }
+#cal-grid-wrap { flex:1; overflow-y:auto; padding:12px; }
+.cal-dow-row { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }
+.cal-dow { text-align:center; font-family:'DotGothic16',monospace; font-size:10px; color:var(--muted); padding:4px 0; }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+.cal-cell {
+  aspect-ratio:1; background:var(--card); border-radius:8px;
+  border:1px solid transparent; padding:4px; cursor:pointer;
+  transition:all 0.15s; overflow:hidden; display:flex;
+  flex-direction:column; min-height:52px;
+}
+.cal-cell:hover { border-color:var(--accent); }
+.cal-cell.today { border-color:var(--accent2); }
+.cal-cell.selected { background:rgba(212,98,42,0.1); border-color:var(--accent); }
+.cal-cell.empty { background:transparent; cursor:default; border-color:transparent; }
+.cal-day-num { font-size:11px; color:var(--muted); font-family:'DotGothic16',monospace; line-height:1; }
+.cal-cell.today .cal-day-num { color:var(--accent2); font-weight:700; }
+.cal-emojis { font-size:13px; line-height:1.3; flex:1; overflow:hidden; word-break:break-all; }
+.cal-kcal { font-size:9px; color:var(--green); font-family:'DotGothic16',monospace; margin-top:auto; }
+
+/* ── DAY DETAIL ── */
+#day-detail { position:fixed; inset:0; z-index:200; display:none; align-items:flex-end; }
+#day-detail.open { display:flex; }
+#day-detail-backdrop { position:absolute; inset:0; background:rgba(30,15,5,0.45); }
+#day-detail-sheet {
+  position:relative; z-index:1; width:100%; max-height:70vh;
+  background:var(--panel); border-top:2px solid var(--accent);
+  border-radius:16px 16px 0 0; padding:16px; overflow-y:auto;
+  animation:slideUp 0.25s ease;
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+#day-detail-title { font-family:'DotGothic16',monospace; color:var(--accent2); font-size:14px; margin-bottom:12px; }
+#day-detail-summary { display:flex; gap:16px; margin-bottom:14px; }
+.ds-stat { text-align:center; flex:1; background:var(--card); border-radius:8px; padding:8px; }
+.ds-num { font-size:20px; font-weight:800; color:var(--accent); }
+.ds-lbl { font-size:10px; color:var(--muted); font-family:'DotGothic16',monospace; }
+#day-detail-list { display:flex; flex-direction:column; gap:8px; }
+.detail-item {
+  display:flex; align-items:center; gap:10px; background:var(--card);
+  border-radius:10px; padding:10px 12px; border:1px solid transparent;
+}
+.detail-emoji { font-size:26px; flex-shrink:0; }
+.detail-info { flex:1; }
+.detail-name { font-size:14px; font-weight:700; }
+.detail-cal { font-size:11px; color:var(--green); font-family:'DotGothic16',monospace; }
+.detail-actions { display:flex; gap:6px; }
+.icon-btn {
+  background:none; border:1px solid var(--border); border-radius:6px;
+  color:var(--muted); width:32px; height:32px; cursor:pointer; font-size:14px;
+  display:flex; align-items:center; justify-content:center; transition:all 0.15s;
+}
+.icon-btn:hover { border-color:var(--accent); color:var(--accent); }
+.icon-btn.del:hover { border-color:#b42820; color:#b42820; }
+
+/* ── FOOD MENU (タップメニュー) ── */
+#food-menu {
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  padding:12px 16px; z-index:600; display:none;
+  gap:10px; box-shadow:0 4px 24px rgba(0,0,0,0.15); align-items:center;
+  animation:fadeInUp 0.2s ease;
+}
+#food-menu.show { display:flex; }
+@keyframes fadeInUp { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+.food-menu-name { font-size:13px; font-weight:700; color:var(--text); max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.food-menu-btn {
+  background:var(--panel); border:1px solid var(--border); border-radius:8px;
+  padding:7px 14px; font-size:13px; cursor:pointer; color:var(--text);
+  font-family:'DotGothic16',monospace;
+}
+.food-menu-btn.del { background:#fff0f0; border-color:#ffcccc; color:#b42820; }
+.food-menu-close {
+  background:none; border:none; font-size:20px; cursor:pointer;
+  color:var(--muted); padding:0 2px; line-height:1;
+}
+
+/* ── MODALS ── */
+.modal-overlay {
+  position:fixed; inset:0; z-index:300; background:rgba(30,15,5,0.5);
+  display:none; align-items:center; justify-content:center; padding:20px;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--panel); border:1px solid var(--border); border-radius:16px;
+  padding:20px; width:100%; max-width:360px; animation:fadeInScale 0.2s ease;
+}
+@keyframes fadeInScale { from{opacity:0;transform:scale(0.93)} to{opacity:1;transform:scale(1)} }
+.modal h3 { font-family:'DotGothic16',monospace; color:var(--accent2); font-size:14px; margin-bottom:14px; }
+.form-group { margin-bottom:12px; }
+.form-group label { display:block; font-size:11px; color:var(--muted); font-family:'DotGothic16',monospace; margin-bottom:5px; }
+.form-group input {
+  width:100%; background:var(--card); border:1px solid var(--border);
+  border-radius:8px; color:var(--text); padding:9px 12px;
+  font-family:'Kaisei Tokumin',serif; font-size:14px; outline:none; transition:border-color 0.15s;
+}
+.form-group input:focus { border-color:var(--accent); }
+.emoji-picker { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.emoji-opt {
+  background:var(--card); border:1px solid var(--border); border-radius:6px;
+  width:36px; height:36px; font-size:20px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:all 0.12s;
+}
+.emoji-opt.selected { border-color:var(--accent); background:rgba(212,98,42,0.1); }
+.modal-actions { display:flex; gap:8px; margin-top:16px; }
+.modal-actions .btn { flex:1; justify-content:center; }
+.btn-cancel { background:var(--card); color:var(--muted); border:1px solid var(--border); }
+
+/* ── LOADING / TOAST ── */
+#loading {
+  position:fixed; inset:0; z-index:400; background:rgba(245,240,232,0.88);
+  display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+}
+#loading.show { display:flex; }
+.spin { width:44px; height:44px; border:3px solid rgba(212,98,42,0.2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.75s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.load-txt { font-family:'DotGothic16',monospace; font-size:13px; color:var(--accent); letter-spacing:2px; }
+
+#toast {
+  position:fixed; bottom:90px; left:50%;
+  transform:translateX(-50%) translateY(10px);
+  background:var(--card); border:1px solid var(--accent); border-radius:12px;
+  padding:9px 18px; font-size:13px; opacity:0; transition:all 0.28s;
+  z-index:500; pointer-events:none; white-space:nowrap;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">めし<em>コロ</em> 🍙</div>
-  <div class="nav-tabs">
-    <button class="nav-tab active" onclick="showView('today')">今日</button>
-    <button class="nav-tab" onclick="showView('calendar')">カレンダー</button>
-  </div>
-</header>
+<!-- 横向きメッセージ -->
+<div id="rotate-msg">
+  <div style="font-size:48px">📱</div>
+  <div>縦向きにしてください</div>
+</div>
 
-<div id="app">
+<div id="app-root">
+  <header>
+    <div class="logo">めし<em>コロ</em> 🍙</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showView('today')">今日</button>
+      <button class="nav-tab" onclick="showView('calendar')">カレンダー</button>
+    </div>
+  </header>
 
-  <!-- ══ TODAY VIEW ══ -->
-  <div id="view-today" class="view active">
-    <div id="today-stats">
-      <div class="t-stat">
-        <div class="t-stat-num" id="stat-count">0</div>
-        <div class="t-stat-lbl">食事数</div>
+  <div id="app">
+
+    <!-- TODAY VIEW -->
+    <div id="view-today" class="view active">
+      <div id="today-stats">
+        <div class="t-stat">
+          <div class="t-stat-num" id="stat-count">0</div>
+          <div class="t-stat-lbl">食事数</div>
+        </div>
+        <div class="t-stat">
+          <div class="t-stat-num" id="stat-cal">0</div>
+          <div class="t-stat-lbl">kcal</div>
+        </div>
+        <div class="t-stat">
+          <div class="t-stat-num" id="stat-last" style="font-size:14px">—</div>
+          <div class="t-stat-lbl">最新</div>
+        </div>
       </div>
-      <div class="t-stat">
-        <div class="t-stat-num" id="stat-cal">0</div>
-        <div class="t-stat-lbl">kcal</div>
+
+      <div id="canvas-wrap">
+        <div id="hint-msg">
+          <div class="big">🍽️</div>
+          <p>📸 撮影 または ✏️ 入力で<br>今日の食事を記録しよう</p>
+        </div>
+        <canvas id="world"></canvas>
       </div>
-      <div class="t-stat">
-        <div class="t-stat-num" id="stat-items" style="font-size:14px">—</div>
-        <div class="t-stat-lbl">最新</div>
+
+      <div id="action-bar">
+        <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleFile(event)">
+        <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+          📸 撮影して追加
+        </button>
+        <button class="btn btn-secondary" onclick="openManualModal()">✏️ 手入力</button>
+        <button class="btn btn-secondary" id="gyro-btn" onclick="requestGyro()">📱</button>
       </div>
     </div>
 
-    <div id="canvas-wrap">
-      <div id="hint-msg">
-        <div class="big">🍽️</div>
-        <p>📸 撮影 または ✏️ 入力で<br>今日の食事を記録しよう</p>
+    <!-- CALENDAR VIEW -->
+    <div id="view-calendar" class="view">
+      <div id="cal-header">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+        <div id="cal-month-label"></div>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
       </div>
-      <canvas id="world"></canvas>
-    </div>
-
-    <div id="action-bar">
-      <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleFile(event)">
-      <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
-        📸 撮影して追加
-      </button>
-      <button class="btn btn-secondary" onclick="openManualModal()">
-        ✏️ 手入力
-      </button>
-      <button class="btn btn-secondary" id="gyro-btn" onclick="requestGyro()" title="ジャイロON">
-        📱
-      </button>
-    </div>
-  </div>
-
-  <!-- ══ CALENDAR VIEW ══ -->
-  <div id="view-calendar" class="view">
-    <div id="cal-header">
-      <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
-      <div id="cal-month-label"></div>
-      <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
-    </div>
-    <div id="cal-grid-wrap">
-      <div class="cal-dow-row">
-        <div class="cal-dow">日</div><div class="cal-dow">月</div>
-        <div class="cal-dow">火</div><div class="cal-dow">水</div>
-        <div class="cal-dow">木</div><div class="cal-dow">金</div>
-        <div class="cal-dow">土</div>
+      <div id="cal-grid-wrap">
+        <div class="cal-dow-row">
+          <div class="cal-dow">日</div><div class="cal-dow">月</div>
+          <div class="cal-dow">火</div><div class="cal-dow">水</div>
+          <div class="cal-dow">木</div><div class="cal-dow">金</div>
+          <div class="cal-dow">土</div>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
       </div>
-      <div class="cal-grid" id="cal-grid"></div>
     </div>
-  </div>
 
-</div><!-- #app -->
+  </div><!-- #app -->
+</div><!-- #app-root -->
 
-<!-- ══ DAY DETAIL SHEET ══ -->
+<!-- FOOD MENU (タップ時) -->
+<div id="food-menu">
+  <span id="fm-emoji" style="font-size:24px"></span>
+  <span class="food-menu-name" id="fm-name"></span>
+  <button class="food-menu-btn" id="fm-edit">✏️ 編集</button>
+  <button class="food-menu-btn del" id="fm-delete">🗑️ 削除</button>
+  <button class="food-menu-close" onclick="hideFoodMenu()">×</button>
+</div>
+
+<!-- DAY DETAIL -->
 <div id="day-detail">
   <div id="day-detail-backdrop" onclick="closeDayDetail()"></div>
   <div id="day-detail-sheet">
     <div id="day-detail-title"></div>
     <div id="day-detail-summary"></div>
     <div id="day-detail-list"></div>
-    <button class="btn btn-secondary" style="margin-top:12px;width:100%;justify-content:center" onclick="closeDayDetail()">閉じる</button>
+    <button class="btn btn-cancel" style="margin-top:12px;width:100%;justify-content:center" onclick="closeDayDetail()">閉じる</button>
   </div>
 </div>
 
-<!-- ══ MANUAL INPUT MODAL ══ -->
+<!-- MANUAL MODAL -->
 <div class="modal-overlay" id="manual-modal">
   <div class="modal">
     <h3>✏️ 食事を手入力</h3>
@@ -636,12 +385,12 @@ canvas { display:block; }
       <input type="number" id="m-cal" placeholder="例：500" min="0" max="5000">
     </div>
     <div class="form-group">
-      <label>絵文字を選ぶ</label>
-      <div class="emoji-picker" id="emoji-picker"></div>
+      <label>絵文字</label>
+      <div class="emoji-picker" id="manual-emoji-picker"></div>
     </div>
     <div class="form-group">
       <label>色</label>
-      <input type="color" id="m-color" value="#ff6b35" style="height:36px;padding:2px 6px;cursor:pointer">
+      <input type="color" id="m-color" value="#d4622a" style="height:36px;padding:2px 6px;cursor:pointer">
     </div>
     <div class="modal-actions">
       <button class="btn btn-cancel" onclick="closeManualModal()">キャンセル</button>
@@ -650,7 +399,7 @@ canvas { display:block; }
   </div>
 </div>
 
-<!-- ══ EDIT MODAL ══ -->
+<!-- EDIT MODAL -->
 <div class="modal-overlay" id="edit-modal">
   <div class="modal">
     <h3>✏️ 食事を編集</h3>
@@ -663,7 +412,7 @@ canvas { display:block; }
       <input type="number" id="e-cal" min="0" max="5000">
     </div>
     <div class="form-group">
-      <label>絵文字を選ぶ</label>
+      <label>絵文字</label>
       <div class="emoji-picker" id="edit-emoji-picker"></div>
     </div>
     <div class="form-group">
@@ -677,99 +426,79 @@ canvas { display:block; }
   </div>
 </div>
 
-<!-- ── Loading ── -->
 <div id="loading"><div class="spin"></div><div class="load-txt">AI解析中...</div></div>
 <div id="toast"></div>
 
 <script>
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-// DATA STORE (localStorage)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-function todayKey() {
-  return new Date().toISOString().slice(0,10);
-}
-function getStore() {
-  try { return JSON.parse(localStorage.getItem('meshikoroData') || '{}'); } catch { return {}; }
-}
-function saveStore(s) { localStorage.setItem('meshikoroData', JSON.stringify(s)); }
-function getDay(dateStr) { const s=getStore(); return s[dateStr]||[]; }
-function saveDay(dateStr, items) { const s=getStore(); s[dateStr]=items; saveStore(s); }
+'use strict';
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
+// DATA STORE
+// ══════════════════════════════════════
+const todayKey = () => new Date().toISOString().slice(0,10);
+const getStore = () => { try { return JSON.parse(localStorage.getItem('meshikoroV3')||'{}'); } catch{ return {}; } };
+const saveStore = s => localStorage.setItem('meshikoroV3', JSON.stringify(s));
+const getDay  = d => { const s=getStore(); return s[d]||[]; };
+const saveDay = (d,items) => { const s=getStore(); s[d]=items; saveStore(s); };
+
+// ══════════════════════════════════════
 // PHYSICS ENGINE
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-const { Engine,Render,Runner,Bodies,Body,World,Events,Mouse,MouseConstraint } = Matter;
-const engine = Engine.create();
-const wrap   = document.getElementById('canvas-wrap');
+// ══════════════════════════════════════
+const { Engine, Render, Runner, Bodies, Body, World, Events, Mouse, MouseConstraint } = Matter;
 
-function getWH() {
-  return { W: wrap.clientWidth, H: wrap.clientHeight };
+const engine  = Engine.create({ gravity:{ x:0, y:1.5 } });
+const canvasEl = document.getElementById('world');
+const wrapEl   = document.getElementById('canvas-wrap');
+
+// canvasのサイズを取得（DOMが確定してから呼ぶ）
+function getCanvasSize() {
+  const r = wrapEl.getBoundingClientRect();
+  return { W: Math.floor(r.width) || window.innerWidth, H: Math.floor(r.height) || 400 };
 }
-let { W, H } = getWH();
 
-const render = Render.create({
-  canvas: document.getElementById('world'),
+let { W, H } = getCanvasSize();
+
+const renderer = Render.create({
+  canvas: canvasEl,
   engine,
   options: { width:W, height:H, wireframes:false, background:'transparent' }
 });
 
-const WALL = 80;
-const wallOpts = { isStatic:true, render:{fillStyle:'transparent'}, friction:0.5, restitution:0.05 };
+// 壁
+const THICK = 80;
+let walls = [];
 
-function makeWalls() {
-  const {W, H} = getWH();
-  return [
-    Bodies.rectangle(W/2,      H+(WALL/2), W+WALL*2, WALL, wallOpts), // 床
-    Bodies.rectangle(-(WALL/2), H/2,       WALL,     H*3,  wallOpts), // 左
-    Bodies.rectangle(W+(WALL/2),H/2,       WALL,     H*3,  wallOpts), // 右
-    Bodies.rectangle(W/2,      -(WALL/2),  W+WALL*2, WALL, wallOpts), // 天井
+function rebuildWalls() {
+  if (walls.length) World.remove(engine.world, walls);
+  const wo = { isStatic:true, render:{ fillStyle:'transparent' }, friction:0.5, restitution:0.05, label:'wall' };
+  walls = [
+    Bodies.rectangle(W/2,    H+THICK/2, W+THICK*2, THICK, wo), // 床
+    Bodies.rectangle(-THICK/2, H/2,     THICK, H+THICK*2, wo), // 左
+    Bodies.rectangle(W+THICK/2, H/2,    THICK, H+THICK*2, wo), // 右
+    Bodies.rectangle(W/2,    -THICK/2,  W+THICK*2, THICK, wo), // 天井
   ];
+  World.add(engine.world, walls);
 }
-let walls = makeWalls();
-World.add(engine.world, walls);
+rebuildWalls();
 
-const mc = MouseConstraint.create(engine, {
-  mouse: Mouse.create(render.canvas),
-  constraint: { stiffness:0.18, render:{visible:false} }
-});
+// マウス/タッチ
+const mouse = Mouse.create(canvasEl);
+const mc = MouseConstraint.create(engine, { mouse, constraint:{ stiffness:0.15, render:{ visible:false } } });
 World.add(engine.world, mc);
-Runner.run(Runner.create(), engine);
-Render.run(render);
 
-// physics bodies list
+Runner.run(Runner.create(), engine);
+Render.run(renderer);
+
+// 食べ物リスト { body, food }
 let physBodies = [];
 
-function resizePhysics() {
-  const wh = getWH();
-  W = wh.W; H = wh.H;
-  render.canvas.width  = W; render.canvas.height = H;
-  render.options.width = W; render.options.height = H;
-
-  World.remove(engine.world, walls);
-  walls = makeWalls();
-  World.add(engine.world, walls);
-
-  physBodies.forEach(({body}) => {
-    const {x, y} = body.position;
-    const nx = Math.max(40, Math.min(W-40, x));
-    const ny = Math.max(40, Math.min(H-40, y));
-    if (nx !== x || ny !== y) {
-      Body.setPosition(body, {x: nx, y: ny});
-      Body.setVelocity(body, {x: 0, y: 0});
-    }
-  });
-}
-window.addEventListener('resize', resizePhysics);
-
-// Draw emojis on canvas
-Events.on(render, 'afterRender', () => {
-  const ctx = render.canvas.getContext('2d');
-  physBodies.forEach(({body, food}) => {
+// ══ 絵文字描画 ══
+Events.on(renderer, 'afterRender', () => {
+  const ctx = canvasEl.getContext('2d');
+  physBodies.forEach(({ body, food }) => {
     if (!body || !food) return;
-    const {x,y} = body.position;
-    // 画面内にある時だけ描画
-    if (x < -100 || x > W+100 || y < -100 || y > H+100) return;
-    const sz = body._sz || 40;
+    const { x, y } = body.position;
+    const sz = body._sz || 42;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(body.angle);
@@ -781,124 +510,172 @@ Events.on(render, 'afterRender', () => {
   });
 });
 
+// ══ 食べ物を物理世界に追加 ══
 function addPhysBody(food) {
-  // W/Hが確定してから生成する
-  const cw = render.canvas.width  || W;
-  const ch = render.canvas.height || H;
-  const sz = 38 + Math.random() * 14;
-  const margin = sz + 20;
-  const x = margin + Math.random() * Math.max(1, cw - margin * 2);
-  // 画面上部から少し内側（天井の壁の内側）に生成
-  const y = sz + 10;
+  const sz  = 38 + Math.random() * 14;
+  const pad = sz + 20;
+  const x   = pad + Math.random() * Math.max(10, W - pad * 2);
+  const y   = sz + 5; // 画面上部から少し内側
 
-  const isRound = (food.shape === 'circle');
+  const opts = {
+    restitution: 0.15,
+    friction: 0.45,
+    frictionAir: 0.012,
+    render: { fillStyle: food.color || '#d4622a' }
+  };
+
   let body;
-  if (isRound) {
-    body = Bodies.circle(x, y, sz, {
-      restitution: 0.2, friction: 0.4, frictionAir: 0.01,
-      render: { fillStyle: food.color || '#ff6b35' }
-    });
+  if (food.shape === 'circle') {
+    body = Bodies.circle(x, y, sz, opts);
   } else {
-    body = Bodies.rectangle(x, y, sz * 1.9, sz * 1.2, {
-      restitution: 0.1, friction: 0.5, frictionAir: 0.015,
-      chamfer: { radius: 10 },
-      render: { fillStyle: food.color || '#ff6b35' }
-    });
+    body = Bodies.rectangle(x, y, sz * 1.8, sz * 1.15, { ...opts, chamfer:{ radius:10 } });
   }
-  // 少し下向きの初速を与えてすぐ落ち始める
-  Body.setVelocity(body, { x: (Math.random()-0.5)*2, y: 2 });
+
   body._sz   = sz;
-  body._food = food;
+  body._food = food; // foodデータを直接ボディに持たせる
+  Body.setVelocity(body, { x:(Math.random()-0.5)*1.5, y:1.5 });
   World.add(engine.world, body);
   physBodies.push({ body, food });
 }
 
-// 物理ボディをタップで選択 → 編集・削除メニュー表示
-let tapTimer = null;
-render.canvas.addEventListener('click', (e) => {
-  const rect = render.canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  for (let i = physBodies.length - 1; i >= 0; i--) {
-    const { body, food } = physBodies[i];
+// ══ 画面サイズ変更 ══
+function resizePhysics() {
+  const size = getCanvasSize();
+  W = size.W; H = size.H;
+
+  canvasEl.width  = W;
+  canvasEl.height = H;
+  renderer.options.width  = W;
+  renderer.options.height = H;
+
+  rebuildWalls();
+
+  // 画面外に出たボディを中央に戻す
+  physBodies.forEach(({ body }) => {
     const { x, y } = body.position;
-    const sz = body._sz || 40;
-    const dist = Math.sqrt((mx-x)**2 + (my-y)**2);
-    if (dist < sz * 1.2) {
-      showFoodMenu(food, i);
-      break;
-    }
-  }
-});
-
-function showFoodMenu(food, physIdx) {
-  // 既存のメニューがあれば消す
-  const old = document.getElementById('food-menu');
-  if (old) old.remove();
-
-  const menu = document.createElement('div');
-  menu.id = 'food-menu';
-  menu.style.cssText = `
-    position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
-    background:#fff; border:1px solid var(--border); border-radius:14px;
-    padding:12px 16px; z-index:600; display:flex; gap:10px;
-    box-shadow:0 4px 20px rgba(0,0,0,0.15); align-items:center;
-  `;
-  menu.innerHTML = `
-    <span style="font-size:22px">${food.emoji}</span>
-    <span style="font-size:13px;font-weight:700;color:var(--text);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${food.name}</span>
-    <button onclick="openEditModal('${todayKey()}',${food.id});document.getElementById('food-menu').remove()" 
-      style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:var(--text)">✏️ 編集</button>
-    <button onclick="deleteItem('${todayKey()}',${food.id});document.getElementById('food-menu').remove()"
-      style="background:#fff0f0;border:1px solid #ffcccc;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:#b42820">🗑️ 削除</button>
-    <button onclick="document.getElementById('food-menu').remove()"
-      style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);padding:0 4px">×</button>
-  `;
-  document.body.appendChild(menu);
-  // 3秒で自動消去
-  setTimeout(() => { if (document.getElementById('food-menu')) document.getElementById('food-menu').remove(); }, 4000);
+    const nx = Math.max(50, Math.min(W - 50, x));
+    const ny = Math.max(50, Math.min(H - 50, y));
+    Body.setPosition(body, { x: nx, y: ny });
+    Body.setVelocity(body, { x: 0, y: 0 });
+  });
 }
 
+// orientationchange後は少し待ってからリサイズ
+window.addEventListener('resize', () => setTimeout(resizePhysics, 200));
+
+// ══ 今日の物理リセット ══
 function reloadTodayPhysics() {
-  // clear existing
-  physBodies.forEach(({body}) => World.remove(engine.world, body));
+  physBodies.forEach(({ body }) => World.remove(engine.world, body));
   physBodies = [];
   const items = getDay(todayKey());
   items.forEach(f => addPhysBody(f));
   updateTodayStats();
-  if (items.length > 0) document.getElementById('hint-msg').style.display = 'none';
+  document.getElementById('hint-msg').style.display = items.length ? 'none' : '';
 }
 
+// ══ 統計更新 ══
 function updateTodayStats() {
   const items = getDay(todayKey());
-  const total = items.reduce((a,b) => a+(b.calories||0), 0);
+  const total = items.reduce((a,b) => a + (b.calories||0), 0);
   document.getElementById('stat-count').textContent = items.length;
   document.getElementById('stat-cal').textContent   = total;
-  document.getElementById('stat-items').textContent = items.length ? items[items.length-1].emoji : '—';
+  document.getElementById('stat-last').textContent  = items.length ? items[items.length-1].emoji : '—';
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
+// タップで食べ物を選択（touchend使用）
+// ══════════════════════════════════════
+let touchMoved = false;
+
+canvasEl.addEventListener('touchstart', () => { touchMoved = false; }, { passive:true });
+canvasEl.addEventListener('touchmove',  () => { touchMoved = true;  }, { passive:true });
+canvasEl.addEventListener('touchend', (e) => {
+  if (touchMoved) return; // スワイプは無視
+  e.preventDefault();
+  const touch = e.changedTouches[0];
+  const rect  = canvasEl.getBoundingClientRect();
+  const mx = touch.clientX - rect.left;
+  const my = touch.clientY - rect.top;
+  checkBodyTap(mx, my);
+}, { passive:false });
+
+// PC用クリックも対応
+canvasEl.addEventListener('click', (e) => {
+  const rect = canvasEl.getBoundingClientRect();
+  checkBodyTap(e.clientX - rect.left, e.clientY - rect.top);
+});
+
+function checkBodyTap(mx, my) {
+  // 背景タップでメニューを閉じる
+  let hit = false;
+  for (let i = physBodies.length - 1; i >= 0; i--) {
+    const { body, food } = physBodies[i];
+    const { x, y } = body.position;
+    const sz = (body._sz || 42) * 1.3;
+    if (Math.sqrt((mx-x)**2 + (my-y)**2) < sz) {
+      showFoodMenu(food);
+      hit = true;
+      break;
+    }
+  }
+  if (!hit) hideFoodMenu();
+}
+
+// ══ 食べ物メニュー ══
+let menuFood = null;
+let menuAutoHide = null;
+
+function showFoodMenu(food) {
+  menuFood = food;
+  document.getElementById('fm-emoji').textContent = food.emoji || '🍽️';
+  document.getElementById('fm-name').textContent  = food.name  || '';
+  const menuEl = document.getElementById('food-menu');
+  menuEl.classList.add('show');
+
+  // ボタンのイベントを設定
+  document.getElementById('fm-edit').onclick = () => {
+    hideFoodMenu();
+    openEditModal(todayKey(), food.id);
+  };
+  document.getElementById('fm-delete').onclick = () => {
+    hideFoodMenu();
+    deleteItem(todayKey(), food.id);
+  };
+
+  clearTimeout(menuAutoHide);
+  menuAutoHide = setTimeout(hideFoodMenu, 5000);
+}
+
+function hideFoodMenu() {
+  document.getElementById('food-menu').classList.remove('show');
+  menuFood = null;
+  clearTimeout(menuAutoHide);
+}
+
+// ══════════════════════════════════════
 // VIEW SWITCH
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  const idx = name==='today'?0:1;
-  document.querySelectorAll('.nav-tab')[idx].classList.add('active');
-  if (name==='calendar') renderCalendar();
-  if (name==='today') { setTimeout(resizePhysics,10); updateTodayStats(); }
+  document.querySelectorAll('.nav-tab')[name==='today'?0:1].classList.add('active');
+  if (name === 'calendar') renderCalendar();
+  if (name === 'today') {
+    setTimeout(() => { resizePhysics(); updateTodayStats(); }, 50);
+  }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
 // FILE / AI
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
 async function handleFile(e) {
-  const file = e.target.files[0]; if(!file) return;
-  e.target.value='';
+  const file = e.target.files[0];
+  if (!file) return;
+  e.target.value = '';
   document.getElementById('loading').classList.add('show');
   try {
-    const b64 = await toBase64(file);
+    const b64  = await toBase64(file);
     const food = await analyzeFood(b64);
     addFoodItem(food);
     showToast(`🍴 ${food.name} を追加しました！`);
@@ -909,217 +686,209 @@ async function handleFile(e) {
     document.getElementById('loading').classList.remove('show');
   }
 }
+
 function toBase64(file) {
-  return new Promise((res,rej) => {
+  return new Promise((res, rej) => {
     const r = new FileReader();
-    r.onload = () => res(r.result.split(',')[1]);
+    r.onload  = () => res(r.result.split(',')[1]);
     r.onerror = rej;
     r.readAsDataURL(file);
   });
 }
+
 async function analyzeFood(b64) {
-  const prompt = `料理の写真を見てJSONのみで返答してください。他の文字は含めないでください。
-{
-  "name": "料理名（日本語、短く）",
-  "emoji": "最も合う食べ物絵文字1文字",
-  "calories": 推定カロリー整数,
-  "color": "料理イメージカラー16進数",
-  "shape": "circle か rectangle"
-}`;
-  const res = await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+  const prompt = `この料理の写真を見て、以下のJSON形式のみで答えてください。前後に余分な文字は一切不要です。
+{"name":"料理名(日本語,短く)","emoji":"絵文字1文字","calories":推定kcal整数,"color":"#rrggbb","shape":"circle"}
+shapeはすべてcircleでOKです。`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model:'claude-sonnet-4-20250514',
-      max_tokens:300,
-      messages:[{role:'user',content:[
-        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
-        {type:'text',text:prompt}
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 200,
+      messages: [{ role:'user', content:[
+        { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } },
+        { type:'text', text:prompt }
       ]}]
     })
   });
   const data = await res.json();
-  const txt = data.content.map(i=>i.text||'').join('');
-  return JSON.parse(txt.replace(/```json|```/g,'').trim());
+  const txt  = data.content.map(i => i.text||'').join('');
+  const json = txt.match(/\{[\s\S]*\}/);
+  if (!json) throw new Error('JSON not found');
+  return JSON.parse(json[0]);
 }
 
 function addFoodItem(food) {
   const items = getDay(todayKey());
-  const item = { id: Date.now(), ...food };
+  const item  = { id: Date.now(), shape:'circle', ...food };
   items.push(item);
   saveDay(todayKey(), items);
   addPhysBody(item);
-  document.getElementById('hint-msg').style.display='none';
+  document.getElementById('hint-msg').style.display = 'none';
   updateTodayStats();
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-// MANUAL INPUT MODAL
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-const EMOJIS = ['🍙','🍱','🍜','🍣','🍛','🍔','🍕','🥗','🍰','🥩','🍳','🥞','🍞','🥪','🌮','🥘','🍲','🍝','🥩','🧆','🍦','☕','🥤','🍺'];
-let selectedEmoji = '🍙';
+// ══════════════════════════════════════
+// MANUAL MODAL
+// ══════════════════════════════════════
+const EMOJIS = ['🍙','🍱','🍜','🍣','🍛','🍔','🍕','🥗','🍰','🥩','🍳','🥞','🍞','🥪','🌮','🥘','🍲','🍝','🧆','🍦','☕','🥤','🍺','🍷'];
+let pickerEmoji = { manual:'🍙', edit:'🍙' };
 
-function buildEmojiPicker(containerId, onSelect) {
+function buildPicker(containerId, key, initial) {
+  pickerEmoji[key] = initial || '🍙';
   const c = document.getElementById(containerId);
   c.innerHTML = '';
   EMOJIS.forEach(em => {
     const b = document.createElement('button');
-    b.className = 'emoji-opt' + (em===selectedEmoji?' selected':'');
+    b.className = 'emoji-opt' + (em === pickerEmoji[key] ? ' selected' : '');
     b.textContent = em;
+    b.type = 'button';
     b.onclick = () => {
-      selectedEmoji = em;
-      c.querySelectorAll('.emoji-opt').forEach(x=>x.classList.remove('selected'));
+      pickerEmoji[key] = em;
+      c.querySelectorAll('.emoji-opt').forEach(x => x.classList.remove('selected'));
       b.classList.add('selected');
-      if(onSelect) onSelect(em);
     };
     c.appendChild(b);
   });
 }
 
 function openManualModal() {
-  selectedEmoji = '🍙';
-  document.getElementById('m-name').value='';
-  document.getElementById('m-cal').value='';
-  document.getElementById('m-color').value='#ff6b35';
-  buildEmojiPicker('emoji-picker');
+  document.getElementById('m-name').value  = '';
+  document.getElementById('m-cal').value   = '';
+  document.getElementById('m-color').value = '#d4622a';
+  buildPicker('manual-emoji-picker', 'manual', '🍙');
   document.getElementById('manual-modal').classList.add('open');
+  setTimeout(() => document.getElementById('m-name').focus(), 100);
 }
 function closeManualModal() { document.getElementById('manual-modal').classList.remove('open'); }
+
 function submitManual() {
   const name = document.getElementById('m-name').value.trim();
-  const cal  = parseInt(document.getElementById('m-cal').value)||0;
-  const color= document.getElementById('m-color').value;
-  if(!name){ showToast('料理名を入力してください'); return; }
-  addFoodItem({ name, emoji:selectedEmoji, calories:cal, color, shape:'circle' });
+  if (!name) { showToast('料理名を入力してください'); return; }
+  const cal   = parseInt(document.getElementById('m-cal').value) || 0;
+  const color = document.getElementById('m-color').value;
+  addFoodItem({ name, emoji:pickerEmoji.manual, calories:cal, color, shape:'circle' });
   closeManualModal();
   showToast(`✅ ${name} を追加しました！`);
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
 // EDIT MODAL
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-let editContext = null; // { dateStr, itemId }
+// ══════════════════════════════════════
+let editCtx = null; // { dateStr, itemId }
 
 function openEditModal(dateStr, itemId) {
-  const items = getDay(dateStr);
-  const item = items.find(i=>i.id===itemId);
-  if(!item) return;
-  editContext = { dateStr, itemId };
-  selectedEmoji = item.emoji||'🍙';
-  document.getElementById('e-name').value = item.name||'';
-  document.getElementById('e-cal').value  = item.calories||'';
-  document.getElementById('e-color').value= item.color||'#ff6b35';
-  buildEmojiPicker('edit-emoji-picker');
+  const item = getDay(dateStr).find(i => i.id === itemId);
+  if (!item) { showToast('データが見つかりません'); return; }
+  editCtx = { dateStr, itemId };
+  document.getElementById('e-name').value  = item.name || '';
+  document.getElementById('e-cal').value   = item.calories || '';
+  document.getElementById('e-color').value = item.color || '#d4622a';
+  buildPicker('edit-emoji-picker', 'edit', item.emoji || '🍙');
   document.getElementById('edit-modal').classList.add('open');
 }
-function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); editContext=null; }
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editCtx = null;
+}
+
 function submitEdit() {
-  if(!editContext) return;
-  const { dateStr, itemId } = editContext;
-  let items = getDay(dateStr);
-  const idx = items.findIndex(i=>i.id===itemId);
-  if(idx===-1) return;
+  if (!editCtx) return;
+  const { dateStr, itemId } = editCtx;
+  const items = getDay(dateStr);
+  const idx   = items.findIndex(i => i.id === itemId);
+  if (idx === -1) return;
+
   items[idx] = {
     ...items[idx],
-    name:  document.getElementById('e-name').value.trim() || items[idx].name,
-    calories: parseInt(document.getElementById('e-cal').value)||items[idx].calories,
-    emoji: selectedEmoji,
-    color: document.getElementById('e-color').value,
+    name:     document.getElementById('e-name').value.trim() || items[idx].name,
+    calories: parseInt(document.getElementById('e-cal').value) || items[idx].calories,
+    emoji:    pickerEmoji.edit,
+    color:    document.getElementById('e-color').value,
   };
   saveDay(dateStr, items);
+
+  if (dateStr === todayKey()) reloadTodayPhysics();
+  if (document.getElementById('day-detail').classList.contains('open')) renderDayDetail(dateStr);
+  renderCalendar();
   closeEditModal();
-
-  const isToday = (dateStr === todayKey());
-  if(isToday) reloadTodayPhysics();
-
-  // refresh open detail
-  if(document.getElementById('day-detail').classList.contains('open')) {
-    renderDayDetail(dateStr);
-  }
-  if(calViewMonth !== undefined) renderCalendar();
   showToast('✏️ 編集しました');
 }
 
+// ══════════════════════════════════════
+// DELETE
+// ══════════════════════════════════════
 function deleteItem(dateStr, itemId) {
-  if(!confirm('削除しますか？')) return;
-  let items = getDay(dateStr);
-  items = items.filter(i=>i.id!==itemId);
+  if (!confirm('削除しますか？')) return;
+  let items = getDay(dateStr).filter(i => i.id !== itemId);
   saveDay(dateStr, items);
-  const isToday = (dateStr === todayKey());
-  if(isToday) reloadTodayPhysics();
-  if(document.getElementById('day-detail').classList.contains('open')) {
-    if(items.length===0) closeDayDetail();
-    else renderDayDetail(dateStr);
+  if (dateStr === todayKey()) reloadTodayPhysics();
+  if (document.getElementById('day-detail').classList.contains('open')) {
+    items.length ? renderDayDetail(dateStr) : closeDayDetail();
   }
   renderCalendar();
   showToast('🗑️ 削除しました');
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
 // CALENDAR
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-let calViewDate = new Date();
-let calViewMonth;
+// ══════════════════════════════════════
+let calDate = new Date();
 
 function changeMonth(d) {
-  calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth()+d, 1);
+  calDate = new Date(calDate.getFullYear(), calDate.getMonth()+d, 1);
   renderCalendar();
 }
 
 function renderCalendar() {
-  const now   = new Date();
-  const year  = calViewDate.getFullYear();
-  const month = calViewDate.getMonth();
-  calViewMonth = month;
-
-  document.getElementById('cal-month-label').textContent =
-    `${year}年 ${month+1}月`;
+  const year  = calDate.getFullYear();
+  const month = calDate.getMonth();
+  document.getElementById('cal-month-label').textContent = `${year}年 ${month+1}月`;
 
   const firstDay = new Date(year, month, 1).getDay();
-  const lastDate = new Date(year, month+1, 0).getDate();
-  const store    = getStore();
-  const grid     = document.getElementById('cal-grid');
-  grid.innerHTML = '';
+  const lastDate  = new Date(year, month+1, 0).getDate();
+  const store     = getStore();
+  const grid      = document.getElementById('cal-grid');
+  grid.innerHTML  = '';
 
-  // empty cells
-  for(let i=0;i<firstDay;i++) {
-    const c=document.createElement('div');
-    c.className='cal-cell empty'; grid.appendChild(c);
+  for (let i=0; i<firstDay; i++) {
+    const c = document.createElement('div');
+    c.className = 'cal-cell empty';
+    grid.appendChild(c);
   }
-
-  for(let d=1;d<=lastDate;d++) {
-    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const items = store[ds]||[];
-    const isToday = (ds===todayKey());
-
-    const cell = document.createElement('div');
-    cell.className = 'cal-cell' + (isToday?' today':'') + (items.length?' has-data':'');
+  for (let d=1; d<=lastDate; d++) {
+    const ds    = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const items = store[ds] || [];
+    const cell  = document.createElement('div');
+    cell.className = 'cal-cell' + (ds===todayKey()?' today':'') + (items.length?' has-data':'');
 
     const num = document.createElement('div');
-    num.className='cal-day-num'; num.textContent=d;
+    num.className = 'cal-day-num';
+    num.textContent = d;
     cell.appendChild(num);
 
-    if(items.length>0){
+    if (items.length) {
       const em = document.createElement('div');
-      em.className='cal-emojis';
+      em.className = 'cal-emojis';
       em.textContent = items.slice(0,4).map(i=>i.emoji).join('');
       cell.appendChild(em);
 
-      const kcal = document.createElement('div');
-      kcal.className='cal-kcal';
-      const tot = items.reduce((a,b)=>a+(b.calories||0),0);
-      kcal.textContent = tot+'kcal';
-      cell.appendChild(kcal);
+      const kc = document.createElement('div');
+      kc.className = 'cal-kcal';
+      kc.textContent = items.reduce((a,b)=>a+(b.calories||0),0) + 'kcal';
+      cell.appendChild(kc);
 
-      cell.onclick = () => { openDayDetail(ds); };
+      cell.onclick = () => openDayDetail(ds);
     }
     grid.appendChild(cell);
   }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
 // DAY DETAIL
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
 let currentDetailDate = null;
 
 function openDayDetail(ds) {
@@ -1134,8 +903,7 @@ function closeDayDetail() {
 function renderDayDetail(ds) {
   const items = getDay(ds);
   const [y,m,d] = ds.split('-');
-  document.getElementById('day-detail-title').textContent =
-    `📅 ${y}年${parseInt(m)}月${parseInt(d)}日の食事`;
+  document.getElementById('day-detail-title').textContent = `📅 ${y}年${parseInt(m)}月${parseInt(d)}日の食事`;
 
   const total = items.reduce((a,b)=>a+(b.calories||0),0);
   document.getElementById('day-detail-summary').innerHTML = `
@@ -1143,52 +911,45 @@ function renderDayDetail(ds) {
     <div class="ds-stat"><div class="ds-num">${total}</div><div class="ds-lbl">総kcal</div></div>
     <div class="ds-stat"><div class="ds-num">${items.length?Math.round(total/items.length):0}</div><div class="ds-lbl">平均kcal</div></div>
   `;
-
   document.getElementById('day-detail-list').innerHTML = items.map(item => `
     <div class="detail-item">
-      <div class="detail-emoji">${item.emoji}</div>
+      <div class="detail-emoji">${item.emoji||'🍽️'}</div>
       <div class="detail-info">
-        <div class="detail-name">${item.name}</div>
-        <div class="detail-cal">${item.calories} kcal</div>
+        <div class="detail-name">${item.name||''}</div>
+        <div class="detail-cal">${item.calories||0} kcal</div>
       </div>
       <div class="detail-actions">
-        <button class="icon-btn" onclick="openEditModal('${ds}',${item.id})">✏️</button>
-        <button class="icon-btn del" onclick="deleteItem('${ds}',${item.id})">🗑️</button>
+        <button class="icon-btn" data-edit="${ds}:${item.id}">✏️</button>
+        <button class="icon-btn del" data-del="${ds}:${item.id}">🗑️</button>
       </div>
     </div>
   `).join('');
+
+  // イベントをdelegationで設定
+  document.getElementById('day-detail-list').onclick = (e) => {
+    const editBtn = e.target.closest('[data-edit]');
+    const delBtn  = e.target.closest('[data-del]');
+    if (editBtn) {
+      const [dateStr, id] = editBtn.dataset.edit.split(':');
+      openEditModal(dateStr, parseInt(id));
+    }
+    if (delBtn) {
+      const [dateStr, id] = delBtn.dataset.del.split(':');
+      deleteItem(dateStr, parseInt(id));
+    }
+  };
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-// TOAST
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-let toastT;
-function showToast(msg) {
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
-  clearTimeout(toastT);
-  toastT=setTimeout(()=>t.classList.remove('show'),2600);
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
 // GYROSCOPE
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// ══════════════════════════════════════
 let gyroEnabled = false;
-const BASE_GRAVITY = 1.2;
-
-// デバッグ表示用
-let gyroDebug = document.createElement('div');
-gyroDebug.style.cssText = 'position:fixed;top:60px;left:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;z-index:999;display:none;font-family:monospace;line-height:1.6;pointer-events:none;';
-document.body.appendChild(gyroDebug);
 
 function requestGyro() {
   if (typeof DeviceOrientationEvent !== 'undefined' &&
       typeof DeviceOrientationEvent.requestPermission === 'function') {
     DeviceOrientationEvent.requestPermission()
-      .then(state => {
-        if (state === 'granted') { enableGyro(); }
-        else { showToast('❌ ジャイロの許可が必要です'); }
-      })
+      .then(s => s === 'granted' ? enableGyro() : showToast('❌ ジャイロの許可が必要です'))
       .catch(() => showToast('❌ ジャイロが使えません'));
   } else if ('DeviceOrientationEvent' in window) {
     enableGyro();
@@ -1200,12 +961,11 @@ function requestGyro() {
 function enableGyro() {
   if (gyroEnabled) {
     gyroEnabled = false;
-    window.removeEventListener('deviceorientation', handleOrientation, true);
+    window.removeEventListener('deviceorientation', handleOrientation);
     engine.gravity.x = 0;
-    engine.gravity.y = BASE_GRAVITY;
+    engine.gravity.y = 1.5;
     document.getElementById('gyro-btn').classList.remove('gyro-on');
     document.getElementById('gyro-btn').textContent = '📱';
-    gyroDebug.style.display = 'none';
     showToast('📱 ジャイロ OFF');
     return;
   }
@@ -1213,68 +973,54 @@ function enableGyro() {
   window.addEventListener('deviceorientation', handleOrientation, true);
   document.getElementById('gyro-btn').classList.add('gyro-on');
   document.getElementById('gyro-btn').textContent = '🌀';
-  gyroDebug.style.display = 'block';
   showToast('🌀 ジャイロ ON！傾けてみて！');
 }
 
 function handleOrientation(e) {
   if (!gyroEnabled) return;
-
-  const alpha = e.alpha || 0; // 方位 0-360
-  const beta  = e.beta  || 0; // 前後 -180〜180
-  const gamma = e.gamma || 0; // 左右 -90〜90
-
-  // iOSの縦持ち：beta≒0、gamma≒0 が基準
-  // 左右：gammaがそのまま左右傾き
-  const gx = Math.max(-3, Math.min(3, gamma / 20));
-
-  // 上下：betaの変化をそのまま使う
-  // 前に倒す(beta増加) → 下に落ちる、後ろに倒す(beta減少) → 上に浮く
-  const gy = Math.max(-2, Math.min(3, beta / 30));
-
-  engine.gravity.x = gx;
-  engine.gravity.y = gy;
-
-  // デバッグ表示
-  gyroDebug.innerHTML =
-    `β:${beta.toFixed(1)} γ:${gamma.toFixed(1)}<br>` +
-    `gx:${gx.toFixed(2)} gy:${gy.toFixed(2)}`;
+  const gamma = e.gamma || 0;
+  const beta  = e.beta  || 0;
+  const tilt  = beta - 90;
+  engine.gravity.x = Math.max(-2.5, Math.min(2.5, gamma / 22));
+  engine.gravity.y = Math.max(-1.5, Math.min(2.5, tilt  / 22));
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-// INIT
-// ━━━━━━━━━━━━━━━━━━━━━━━━━
-window.addEventListener('load', () => {
-  // DOM描画完了後にサイズ確定させる
-  setTimeout(() => {
-    resizePhysics();
-    reloadTodayPhysics();
-    initPWA();
-  }, 100);
-});
+// ══════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
 
+// ══════════════════════════════════════
+// PWA / INIT
+// ══════════════════════════════════════
 function initPWA() {
-  // Service Worker登録
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .catch(() => {}); // サーバーなしでは失敗するが無視
-  }
-
-  // Canvasで🍙アイコンを動的生成してapple-touch-iconに設定
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   const c = document.createElement('canvas');
-  c.width = 180; c.height = 180;
+  c.width = c.height = 180;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#f5f0e8';
-  ctx.beginPath();
-  ctx.roundRect(0, 0, 180, 180, 36);
-  ctx.fill();
-  ctx.font = '110px serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.beginPath(); ctx.roundRect(0,0,180,180,36); ctx.fill();
+  ctx.font = '110px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('🍙', 90, 95);
   const icon = document.getElementById('apple-icon');
   if (icon) icon.href = c.toDataURL('image/png');
 }
+
+window.addEventListener('load', () => {
+  // DOMレイアウト確定後に初期化
+  setTimeout(() => {
+    resizePhysics();
+    reloadTodayPhysics();
+    initPWA();
+  }, 150);
+});
 </script>
 </body>
 </html>
