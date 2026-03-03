@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>めしコロ 🍙</title>
+
+<!-- PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="めしコロ">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f5f0e8">
+<link rel="manifest" href="manifest.json">
+
+<!-- iOSホーム画面アイコン（絵文字をCanvasで生成） -->
+<link rel="apple-touch-icon" id="apple-icon" href="">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kaisei+Tokumin:wght@400;700;800&family=DotGothic16&display=swap');
+
+:root {
+  --bg: #f5f0e8;
+  --panel: #efe9dc;
+  --card: #ffffff;
+  --accent: #d4622a;
+  --accent2: #b8860b;
+  --green: #2a7a5e;
+  --blue: #2563a8;
+  --text: #2c2118;
+  --muted: #8a7560;
+  --border: rgba(180,120,60,0.18);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Kaisei Tokumin', serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── HEADER ── */
+header {
+  height: 54px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  z-index: 50;
+}
+.logo {
+  font-family: 'DotGothic16', monospace;
+  font-size: 20px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  flex-shrink: 0;
+}
+.logo em { color: var(--accent2); font-style: normal; }
+
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.nav-tab {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: 'DotGothic16', monospace;
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.nav-tab.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(255,107,53,0.1);
+}
+.nav-tab:hover:not(.active) { color: var(--text); border-color: var(--border); }
+
+/* ── MAIN ── */
+#app { flex:1; overflow:hidden; position:relative; }
+
+.view { display:none; height:100%; }
+.view.active { display:flex; }
+
+/* ══════════════════════════
+   VIEW: TODAY (Physics)
+══════════════════════════ */
+#view-today {
+  flex-direction: column;
+  position: relative;
+}
+
+#canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+canvas { display:block; }
+
+#hint-msg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-60%);
+  text-align: center;
+  color: rgba(44,33,24,0.2);
+  pointer-events: none;
+}
+#hint-msg .big { font-size: 56px; margin-bottom: 8px; }
+#hint-msg p { font-size: 13px; line-height: 1.7; }
+
+/* Bottom action bar */
+#action-bar {
+  flex-shrink: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#action-bar input[type=file] { display:none; }
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-family: 'DotGothic16', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.95); }
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  flex: 1;
+  justify-content: center;
+  font-size: 13px;
+  box-shadow: 0 3px 16px rgba(255,107,53,0.35);
+}
+.btn-primary:hover { box-shadow: 0 4px 24px rgba(255,107,53,0.55); }
+
+.btn-secondary {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+/* Today stats strip */
+#today-stats {
+  flex-shrink: 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.t-stat { text-align: center; }
+.t-stat-num { font-size: 20px; font-weight: 800; color: var(--accent2); line-height: 1; }
+.t-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: 'DotGothic16', monospace; }
+
+/* Food items floating labels */
+.phys-label {
+  position: absolute;
+  background: rgba(245,240,232,0.92);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+  transition: opacity 0.3s;
+  color: var(--text);
+}
+
+/* ══════════════════════════
+   VIEW: CALENDAR
+══════════════════════════ */
+#view-calendar {
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#cal-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+#cal-month-label {
+  font-family: 'DotGothic16', monospace;
+  font-size: 16px;
+  color: var(--accent2);
+}
+.cal-nav-btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  width: 32px; height: 32px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.cal-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+#cal-grid-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.cal-dow-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.cal-dow {
+  text-align: center;
+  font-family: 'DotGothic16', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-cell {
+  aspect-ratio: 1;
+  background: var(--card);
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 52px;
+}
+.cal-cell:hover { border-color: var(--accent); }
+.cal-cell.today { border-color: var(--accent2); }
+.cal-cell.selected { background: rgba(255,107,53,0.15); border-color: var(--accent); }
+.cal-cell.empty { background: transparent; cursor: default; border-color: transparent; }
+.cal-cell.has-data { background: var(--card); }
+
+.cal-day-num {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'DotGothic16', monospace;
+  line-height: 1;
+}
+.cal-cell.today .cal-day-num { color: var(--accent2); font-weight: 700; }
+
+.cal-emojis {
+  font-size: 13px;
+  line-height: 1.3;
+  flex: 1;
+  overflow: hidden;
+  word-break: break-all;
+}
+.cal-kcal {
+  font-size: 9px;
+  color: var(--green);
+  font-family: 'DotGothic16', monospace;
+  margin-top: auto;
+}
+
+/* Day detail panel */
+#day-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: none;
+  align-items: flex-end;
+}
+#day-detail.open { display: flex; }
+#day-detail-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(30,15,5,0.45);
+}
+#day-detail-sheet {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-height: 70vh;
+  background: var(--panel);
+  border-top: 2px solid var(--accent);
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+  overflow-y: auto;
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+#day-detail-title {
+  font-family: 'DotGothic16', monospace;
+  color: var(--accent2);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+#day-detail-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.ds-stat { text-align: center; flex: 1; background: var(--card); border-radius: 8px; padding: 8px; }
+.ds-num { font-size: 20px; font-weight: 800; color: var(--accent); }
+.ds-lbl { font-size: 10px; color: var(--muted); font-family: 'DotGothic16', monospace; }
+#day-detail-list { display: flex; flex-direction: column; gap: 8px; }
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+.detail-item:hover { border-color: var(--border); }
+.detail-emoji { font-size: 26px; flex-shrink: 0; }
+.detail-info { flex: 1; }
+.detail-name { font-size: 14px; font-weight: 700; }
+.detail-cal { font-size: 11px; color: var(--green); font-family: 'DotGothic16', monospace; }
+.detail-actions { display: flex; gap: 6px; }
+.icon-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  width: 28px; height: 28px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.icon-btn.del:hover { border-color: #b42820; color: #b42820; }
+
+/* ══════════════════════════
+   MODALS
+══════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(30,15,5,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  width: 100%;
+  max-width: 360px;
+  animation: fadeInScale 0.2s ease;
+}
+@keyframes fadeInScale {
+  from { opacity:0; transform:scale(0.93); }
+  to { opacity:1; transform:scale(1); }
+}
+.modal h3 {
+  font-family: 'DotGothic16', monospace;
+  color: var(--accent2);
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.form-group { margin-bottom: 12px; }
+.form-group label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'DotGothic16', monospace;
+  margin-bottom: 5px;
+}
+.form-group input, .form-group select {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 9px 12px;
+  font-family: 'Kaisei Tokumin', serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.form-group input:focus, .form-group select:focus {
+  border-color: var(--accent);
+}
+.form-group input[type=number]::-webkit-inner-spin-button { opacity:1; }
+
+.emoji-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.emoji-opt {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 34px; height: 34px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+}
+.emoji-opt.selected { border-color: var(--accent); background: rgba(255,107,53,0.15); }
+.emoji-opt:hover { border-color: var(--accent2); }
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.modal-actions .btn { flex: 1; justify-content: center; }
+.btn-danger { background: rgba(180,40,30,0.1); color: #b42820; border: 1px solid rgba(180,40,30,0.25); }
+.btn-cancel { background: var(--card); color: var(--muted); border: 1px solid var(--border); }
+
+/* ── Loading ── */
+#loading {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(245,240,232,0.88);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+#loading.show { display: flex; }
+.spin {
+  width: 44px; height: 44px;
+  border: 3px solid rgba(255,107,53,0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-txt { font-family: 'DotGothic16', monospace; font-size: 13px; color: var(--accent); letter-spacing: 2px; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 9px 18px;
+  font-size: 13px;
+  opacity: 0;
+  transition: all 0.28s;
+  z-index: 500;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Gyro button active */
+#gyro-btn.gyro-on {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(42,122,94,0.12);
+  animation: gyroPulse 1.8s ease-in-out infinite;
+}
+@keyframes gyroPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(42,122,94,0.3); }
+  50%      { box-shadow: 0 0 0 6px rgba(42,122,94,0); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">めし<em>コロ</em> 🍙</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showView('today')">今日</button>
+    <button class="nav-tab" onclick="showView('calendar')">カレンダー</button>
+  </div>
+</header>
+
+<div id="app">
+
+  <!-- ══ TODAY VIEW ══ -->
+  <div id="view-today" class="view active">
+    <div id="today-stats">
+      <div class="t-stat">
+        <div class="t-stat-num" id="stat-count">0</div>
+        <div class="t-stat-lbl">食事数</div>
+      </div>
+      <div class="t-stat">
+        <div class="t-stat-num" id="stat-cal">0</div>
+        <div class="t-stat-lbl">kcal</div>
+      </div>
+      <div class="t-stat">
+        <div class="t-stat-num" id="stat-items" style="font-size:14px">—</div>
+        <div class="t-stat-lbl">最新</div>
+      </div>
+    </div>
+
+    <div id="canvas-wrap">
+      <div id="hint-msg">
+        <div class="big">🍽️</div>
+        <p>📸 撮影 または ✏️ 入力で<br>今日の食事を記録しよう</p>
+      </div>
+      <canvas id="world"></canvas>
+    </div>
+
+    <div id="action-bar">
+      <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleFile(event)">
+      <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+        📸 撮影して追加
+      </button>
+      <button class="btn btn-secondary" onclick="openManualModal()">
+        ✏️ 手入力
+      </button>
+      <button class="btn btn-secondary" id="gyro-btn" onclick="requestGyro()" title="ジャイロON">
+        📱
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ CALENDAR VIEW ══ -->
+  <div id="view-calendar" class="view">
+    <div id="cal-header">
+      <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+      <div id="cal-month-label"></div>
+      <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+    </div>
+    <div id="cal-grid-wrap">
+      <div class="cal-dow-row">
+        <div class="cal-dow">日</div><div class="cal-dow">月</div>
+        <div class="cal-dow">火</div><div class="cal-dow">水</div>
+        <div class="cal-dow">木</div><div class="cal-dow">金</div>
+        <div class="cal-dow">土</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- ══ DAY DETAIL SHEET ══ -->
+<div id="day-detail">
+  <div id="day-detail-backdrop" onclick="closeDayDetail()"></div>
+  <div id="day-detail-sheet">
+    <div id="day-detail-title"></div>
+    <div id="day-detail-summary"></div>
+    <div id="day-detail-list"></div>
+    <button class="btn btn-secondary" style="margin-top:12px;width:100%;justify-content:center" onclick="closeDayDetail()">閉じる</button>
+  </div>
+</div>
+
+<!-- ══ MANUAL INPUT MODAL ══ -->
+<div class="modal-overlay" id="manual-modal">
+  <div class="modal">
+    <h3>✏️ 食事を手入力</h3>
+    <div class="form-group">
+      <label>料理名</label>
+      <input type="text" id="m-name" placeholder="例：カレーライス" maxlength="30">
+    </div>
+    <div class="form-group">
+      <label>カロリー (kcal)</label>
+      <input type="number" id="m-cal" placeholder="例：500" min="0" max="5000">
+    </div>
+    <div class="form-group">
+      <label>絵文字を選ぶ</label>
+      <div class="emoji-picker" id="emoji-picker"></div>
+    </div>
+    <div class="form-group">
+      <label>色</label>
+      <input type="color" id="m-color" value="#ff6b35" style="height:36px;padding:2px 6px;cursor:pointer">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeManualModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitManual()">追加 🍽️</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDIT MODAL ══ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h3>✏️ 食事を編集</h3>
+    <div class="form-group">
+      <label>料理名</label>
+      <input type="text" id="e-name" maxlength="30">
+    </div>
+    <div class="form-group">
+      <label>カロリー (kcal)</label>
+      <input type="number" id="e-cal" min="0" max="5000">
+    </div>
+    <div class="form-group">
+      <label>絵文字を選ぶ</label>
+      <div class="emoji-picker" id="edit-emoji-picker"></div>
+    </div>
+    <div class="form-group">
+      <label>色</label>
+      <input type="color" id="e-color" style="height:36px;padding:2px 6px;cursor:pointer">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeEditModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Loading ── -->
+<div id="loading"><div class="spin"></div><div class="load-txt">AI解析中...</div></div>
+<div id="toast"></div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// DATA STORE (localStorage)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+function todayKey() {
+  return new Date().toISOString().slice(0,10);
+}
+function getStore() {
+  try { return JSON.parse(localStorage.getItem('meshikoroData') || '{}'); } catch { return {}; }
+}
+function saveStore(s) { localStorage.setItem('meshikoroData', JSON.stringify(s)); }
+function getDay(dateStr) { const s=getStore(); return s[dateStr]||[]; }
+function saveDay(dateStr, items) { const s=getStore(); s[dateStr]=items; saveStore(s); }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// PHYSICS ENGINE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+const { Engine,Render,Runner,Bodies,Body,World,Events,Mouse,MouseConstraint } = Matter;
+const engine = Engine.create();
+const wrap   = document.getElementById('canvas-wrap');
+let W = wrap.clientWidth, H = wrap.clientHeight;
+
+const render = Render.create({
+  canvas: document.getElementById('world'),
+  engine,
+  options: { width:W, height:H, wireframes:false, background:'transparent' }
+});
+
+const wallOpts = { isStatic:true, render:{fillStyle:'transparent'}, friction:0.4, restitution:0.1 };
+let wGround = Bodies.rectangle(W/2, H+25, W*3, 50, wallOpts);
+let wLeft   = Bodies.rectangle(-25, H/2, 50, H*3, wallOpts);
+let wRight  = Bodies.rectangle(W+25, H/2, 50, H*3, wallOpts);
+World.add(engine.world, [wGround, wLeft, wRight]);
+
+const mc = MouseConstraint.create(engine, {
+  mouse: Mouse.create(render.canvas),
+  constraint: { stiffness:0.18, render:{visible:false} }
+});
+World.add(engine.world, mc);
+Runner.run(Runner.create(), engine);
+Render.run(render);
+
+// physics bodies list
+let physBodies = [];
+
+function resizePhysics() {
+  W = wrap.clientWidth; H = wrap.clientHeight;
+  render.canvas.width = W; render.canvas.height = H;
+  render.options.width = W; render.options.height = H;
+  Body.setPosition(wGround, {x:W/2, y:H+25});
+  Body.setPosition(wRight,  {x:W+25, y:H/2});
+}
+window.addEventListener('resize', resizePhysics);
+
+// Draw emojis on canvas
+Events.on(render, 'afterRender', () => {
+  const ctx = render.canvas.getContext('2d');
+  physBodies.forEach(({body, food}) => {
+    const {x,y} = body.position;
+    const sz = body._sz || 36;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(body.angle);
+    ctx.font = `${sz*0.85}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(food.emoji||'🍽️', 0, 0);
+    ctx.restore();
+  });
+});
+
+function addPhysBody(food) {
+  const sz = 36 + Math.random()*16;
+  const x  = W*0.2 + Math.random()*W*0.6;
+  const isRound = food.shape === 'circle';
+  let body;
+  if (isRound) {
+    body = Bodies.circle(x, -sz, sz, {
+      restitution:0.55, friction:0.35, frictionAir:0.008,
+      render:{ fillStyle: food.color||'#ff6b35' }
+    });
+  } else {
+    body = Bodies.rectangle(x, -sz, sz*1.9, sz*1.25, {
+      restitution:0.3, friction:0.5, frictionAir:0.012,
+      chamfer:{radius:10},
+      render:{ fillStyle: food.color||'#ff6b35' }
+    });
+  }
+  body._sz = sz;
+  World.add(engine.world, body);
+  physBodies.push({body, food});
+}
+
+function reloadTodayPhysics() {
+  // clear existing
+  physBodies.forEach(({body}) => World.remove(engine.world, body));
+  physBodies = [];
+  const items = getDay(todayKey());
+  items.forEach(f => addPhysBody(f));
+  updateTodayStats();
+  if (items.length > 0) document.getElementById('hint-msg').style.display = 'none';
+}
+
+function updateTodayStats() {
+  const items = getDay(todayKey());
+  const total = items.reduce((a,b) => a+(b.calories||0), 0);
+  document.getElementById('stat-count').textContent = items.length;
+  document.getElementById('stat-cal').textContent   = total;
+  document.getElementById('stat-items').textContent = items.length ? items[items.length-1].emoji : '—';
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// VIEW SWITCH
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  const idx = name==='today'?0:1;
+  document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  if (name==='calendar') renderCalendar();
+  if (name==='today') { setTimeout(resizePhysics,10); updateTodayStats(); }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// FILE / AI
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+async function handleFile(e) {
+  const file = e.target.files[0]; if(!file) return;
+  e.target.value='';
+  document.getElementById('loading').classList.add('show');
+  try {
+    const b64 = await toBase64(file);
+    const food = await analyzeFood(b64);
+    addFoodItem(food);
+    showToast(`🍴 ${food.name} を追加しました！`);
+  } catch(err) {
+    console.error(err);
+    showToast('❌ 認識できませんでした。手入力をお試しください。');
+  } finally {
+    document.getElementById('loading').classList.remove('show');
+  }
+}
+function toBase64(file) {
+  return new Promise((res,rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+async function analyzeFood(b64) {
+  const prompt = `料理の写真を見てJSONのみで返答してください。他の文字は含めないでください。
+{
+  "name": "料理名（日本語、短く）",
+  "emoji": "最も合う食べ物絵文字1文字",
+  "calories": 推定カロリー整数,
+  "color": "料理イメージカラー16進数",
+  "shape": "circle か rectangle"
+}`;
+  const res = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:300,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
+        {type:'text',text:prompt}
+      ]}]
+    })
+  });
+  const data = await res.json();
+  const txt = data.content.map(i=>i.text||'').join('');
+  return JSON.parse(txt.replace(/```json|```/g,'').trim());
+}
+
+function addFoodItem(food) {
+  const items = getDay(todayKey());
+  const item = { id: Date.now(), ...food };
+  items.push(item);
+  saveDay(todayKey(), items);
+  addPhysBody(item);
+  document.getElementById('hint-msg').style.display='none';
+  updateTodayStats();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// MANUAL INPUT MODAL
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+const EMOJIS = ['🍙','🍱','🍜','🍣','🍛','🍔','🍕','🥗','🍰','🥩','🍳','🥞','🍞','🥪','🌮','🥘','🍲','🍝','🥩','🧆','🍦','☕','🥤','🍺'];
+let selectedEmoji = '🍙';
+
+function buildEmojiPicker(containerId, onSelect) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  EMOJIS.forEach(em => {
+    const b = document.createElement('button');
+    b.className = 'emoji-opt' + (em===selectedEmoji?' selected':'');
+    b.textContent = em;
+    b.onclick = () => {
+      selectedEmoji = em;
+      c.querySelectorAll('.emoji-opt').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+      if(onSelect) onSelect(em);
+    };
+    c.appendChild(b);
+  });
+}
+
+function openManualModal() {
+  selectedEmoji = '🍙';
+  document.getElementById('m-name').value='';
+  document.getElementById('m-cal').value='';
+  document.getElementById('m-color').value='#ff6b35';
+  buildEmojiPicker('emoji-picker');
+  document.getElementById('manual-modal').classList.add('open');
+}
+function closeManualModal() { document.getElementById('manual-modal').classList.remove('open'); }
+function submitManual() {
+  const name = document.getElementById('m-name').value.trim();
+  const cal  = parseInt(document.getElementById('m-cal').value)||0;
+  const color= document.getElementById('m-color').value;
+  if(!name){ showToast('料理名を入力してください'); return; }
+  addFoodItem({ name, emoji:selectedEmoji, calories:cal, color, shape:'circle' });
+  closeManualModal();
+  showToast(`✅ ${name} を追加しました！`);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// EDIT MODAL
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+let editContext = null; // { dateStr, itemId }
+
+function openEditModal(dateStr, itemId) {
+  const items = getDay(dateStr);
+  const item = items.find(i=>i.id===itemId);
+  if(!item) return;
+  editContext = { dateStr, itemId };
+  selectedEmoji = item.emoji||'🍙';
+  document.getElementById('e-name').value = item.name||'';
+  document.getElementById('e-cal').value  = item.calories||'';
+  document.getElementById('e-color').value= item.color||'#ff6b35';
+  buildEmojiPicker('edit-emoji-picker');
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); editContext=null; }
+function submitEdit() {
+  if(!editContext) return;
+  const { dateStr, itemId } = editContext;
+  let items = getDay(dateStr);
+  const idx = items.findIndex(i=>i.id===itemId);
+  if(idx===-1) return;
+  items[idx] = {
+    ...items[idx],
+    name:  document.getElementById('e-name').value.trim() || items[idx].name,
+    calories: parseInt(document.getElementById('e-cal').value)||items[idx].calories,
+    emoji: selectedEmoji,
+    color: document.getElementById('e-color').value,
+  };
+  saveDay(dateStr, items);
+  closeEditModal();
+
+  const isToday = (dateStr === todayKey());
+  if(isToday) reloadTodayPhysics();
+
+  // refresh open detail
+  if(document.getElementById('day-detail').classList.contains('open')) {
+    renderDayDetail(dateStr);
+  }
+  if(calViewMonth !== undefined) renderCalendar();
+  showToast('✏️ 編集しました');
+}
+
+function deleteItem(dateStr, itemId) {
+  if(!confirm('削除しますか？')) return;
+  let items = getDay(dateStr);
+  items = items.filter(i=>i.id!==itemId);
+  saveDay(dateStr, items);
+  const isToday = (dateStr === todayKey());
+  if(isToday) reloadTodayPhysics();
+  if(document.getElementById('day-detail').classList.contains('open')) {
+    if(items.length===0) closeDayDetail();
+    else renderDayDetail(dateStr);
+  }
+  renderCalendar();
+  showToast('🗑️ 削除しました');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// CALENDAR
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+let calViewDate = new Date();
+let calViewMonth;
+
+function changeMonth(d) {
+  calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth()+d, 1);
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const now   = new Date();
+  const year  = calViewDate.getFullYear();
+  const month = calViewDate.getMonth();
+  calViewMonth = month;
+
+  document.getElementById('cal-month-label').textContent =
+    `${year}年 ${month+1}月`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const lastDate = new Date(year, month+1, 0).getDate();
+  const store    = getStore();
+  const grid     = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  // empty cells
+  for(let i=0;i<firstDay;i++) {
+    const c=document.createElement('div');
+    c.className='cal-cell empty'; grid.appendChild(c);
+  }
+
+  for(let d=1;d<=lastDate;d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const items = store[ds]||[];
+    const isToday = (ds===todayKey());
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell' + (isToday?' today':'') + (items.length?' has-data':'');
+
+    const num = document.createElement('div');
+    num.className='cal-day-num'; num.textContent=d;
+    cell.appendChild(num);
+
+    if(items.length>0){
+      const em = document.createElement('div');
+      em.className='cal-emojis';
+      em.textContent = items.slice(0,4).map(i=>i.emoji).join('');
+      cell.appendChild(em);
+
+      const kcal = document.createElement('div');
+      kcal.className='cal-kcal';
+      const tot = items.reduce((a,b)=>a+(b.calories||0),0);
+      kcal.textContent = tot+'kcal';
+      cell.appendChild(kcal);
+
+      cell.onclick = () => { openDayDetail(ds); };
+    }
+    grid.appendChild(cell);
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// DAY DETAIL
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+let currentDetailDate = null;
+
+function openDayDetail(ds) {
+  currentDetailDate = ds;
+  renderDayDetail(ds);
+  document.getElementById('day-detail').classList.add('open');
+}
+function closeDayDetail() {
+  document.getElementById('day-detail').classList.remove('open');
+  currentDetailDate = null;
+}
+function renderDayDetail(ds) {
+  const items = getDay(ds);
+  const [y,m,d] = ds.split('-');
+  document.getElementById('day-detail-title').textContent =
+    `📅 ${y}年${parseInt(m)}月${parseInt(d)}日の食事`;
+
+  const total = items.reduce((a,b)=>a+(b.calories||0),0);
+  document.getElementById('day-detail-summary').innerHTML = `
+    <div class="ds-stat"><div class="ds-num">${items.length}</div><div class="ds-lbl">食事数</div></div>
+    <div class="ds-stat"><div class="ds-num">${total}</div><div class="ds-lbl">総kcal</div></div>
+    <div class="ds-stat"><div class="ds-num">${items.length?Math.round(total/items.length):0}</div><div class="ds-lbl">平均kcal</div></div>
+  `;
+
+  document.getElementById('day-detail-list').innerHTML = items.map(item => `
+    <div class="detail-item">
+      <div class="detail-emoji">${item.emoji}</div>
+      <div class="detail-info">
+        <div class="detail-name">${item.name}</div>
+        <div class="detail-cal">${item.calories} kcal</div>
+      </div>
+      <div class="detail-actions">
+        <button class="icon-btn" onclick="openEditModal('${ds}',${item.id})">✏️</button>
+        <button class="icon-btn del" onclick="deleteItem('${ds}',${item.id})">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// TOAST
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+let toastT;
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// GYROSCOPE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+let gyroEnabled = false;
+const BASE_GRAVITY = 1.2;
+
+function requestGyro() {
+  // iOS 13+ requires explicit permission request
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(state => {
+        if (state === 'granted') {
+          enableGyro();
+        } else {
+          showToast('❌ ジャイロの許可が必要です');
+        }
+      })
+      .catch(() => showToast('❌ ジャイロが使えません'));
+  } else if ('DeviceOrientationEvent' in window) {
+    // Android / desktop — no permission needed
+    enableGyro();
+  } else {
+    showToast('❌ このデバイスはジャイロ非対応です');
+  }
+}
+
+function enableGyro() {
+  if (gyroEnabled) {
+    // toggle OFF
+    gyroEnabled = false;
+    window.removeEventListener('deviceorientation', handleOrientation);
+    engine.gravity.x = 0;
+    engine.gravity.y = BASE_GRAVITY;
+    document.getElementById('gyro-btn').classList.remove('gyro-on');
+    document.getElementById('gyro-btn').textContent = '📱';
+    showToast('📱 ジャイロ OFF');
+    return;
+  }
+  gyroEnabled = true;
+  window.addEventListener('deviceorientation', handleOrientation, true);
+  document.getElementById('gyro-btn').classList.add('gyro-on');
+  document.getElementById('gyro-btn').textContent = '🌀';
+  showToast('🌀 ジャイロ ON！傾けてみて！');
+}
+
+function handleOrientation(e) {
+  if (!gyroEnabled) return;
+
+  // gamma = left/right tilt (-90 to 90)
+  // beta  = front/back tilt (-180 to 180)
+  const gamma = e.gamma || 0;  // X axis (left/right)
+  const beta  = e.beta  || 0;  // Y axis (front/back)
+
+  // Clamp and normalize to reasonable gravity range
+  const gx = Math.max(-3, Math.min(3, gamma / 20));
+  const gy = Math.max(-1, Math.min(3, beta  / 20));
+
+  engine.gravity.x = gx;
+  engine.gravity.y = gy < 0.1 ? 0.1 : gy; // never let gravity fully flip negative
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+// INIT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━
+window.addEventListener('load', () => {
+  resizePhysics();
+  reloadTodayPhysics();
+  initPWA();
+});
+
+function initPWA() {
+  // Service Worker登録
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .catch(() => {}); // サーバーなしでは失敗するが無視
+  }
+
+  // Canvasで🍙アイコンを動的生成してapple-touch-iconに設定
+  const c = document.createElement('canvas');
+  c.width = 180; c.height = 180;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#f5f0e8';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, 180, 180, 36);
+  ctx.fill();
+  ctx.font = '110px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🍙', 90, 95);
+  const icon = document.getElementById('apple-icon');
+  if (icon) icon.href = c.toDataURL('image/png');
+}
+</script>
+</body>
+</html>
