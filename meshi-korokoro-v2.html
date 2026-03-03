@@ -576,29 +576,66 @@ Runner.run(Runner.create(), engine);
 // 食べ物リスト
 let physBodies = [];
 
+// 画像キャッシュ（base64→ImageObject）
+const imgCache = {};
+function getImg(base64) {
+  if (!base64) return null;
+  if (imgCache[base64]) return imgCache[base64].complete ? imgCache[base64] : null;
+  const img = new Image();
+  img.src = 'data:image/jpeg;base64,' + base64;
+  imgCache[base64] = img;
+  return null; // 初回はまだ読み込み中
+}
+
+// 円形マスクで描画するヘルパー
+function drawCircleItem(context, food, x, y, angle, sz) {
+  context.save();
+  context.translate(x, y);
+  context.rotate(angle);
+
+  if (food.photoBase64) {
+    const img = getImg(food.photoBase64);
+    if (img) {
+      // 写真を円形にくり抜いて描画
+      context.beginPath();
+      context.arc(0, 0, sz, 0, Math.PI * 2);
+      context.clip();
+      context.drawImage(img, -sz, -sz, sz * 2, sz * 2);
+      // 枠線
+      context.beginPath();
+      context.arc(0, 0, sz, 0, Math.PI * 2);
+      context.strokeStyle = 'rgba(255,255,255,0.6)';
+      context.lineWidth = 2;
+      context.stroke();
+    } else {
+      // 画像読み込み中は絵文字で代替
+      context.font = `${Math.round(sz * 1.6)}px serif`;
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(food.emoji || '📸', 0, 0);
+    }
+  } else {
+    // 手入力は絵文字
+    context.font = `${Math.round(sz * 1.6)}px serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(food.emoji || '🍽️', 0, 0);
+  }
+
+  context.restore();
+}
+
 // ══ 自前描画ループ（Matter Renderを使わない） ══
 function drawLoop() {
   requestAnimationFrame(drawLoop);
-
-  // canvasサイズが変わっていたら自動追従
   const cw = canvasEl.width;
   const ch = canvasEl.height;
-
   ctx.clearRect(0, 0, cw, ch);
-
   physBodies.forEach(({ body, food }) => {
     if (!body || !food) return;
     const { x, y } = body.position;
     if (x < -200 || x > cw+200 || y < -200 || y > ch+200) return;
-    const sz = body._sz || 42;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(body.angle);
-    ctx.font = `${Math.round(sz * 1.6)}px serif`;
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(food.emoji || '🍽️', 0, 0);
-    ctx.restore();
+    drawCircleItem(ctx, food, x, y, body.angle, body._sz || 42);
   });
 }
 drawLoop();
@@ -826,15 +863,7 @@ function dateDraw() {
     if (!body || !food) return;
     const { x, y } = body.position;
     if (x < -200 || x > dateW+200 || y < -200 || y > dateH+200) return;
-    const sz = body._sz || 42;
-    dateCtx.save();
-    dateCtx.translate(x, y);
-    dateCtx.rotate(body.angle);
-    dateCtx.font = `${Math.round(sz*1.6)}px serif`;
-    dateCtx.textAlign = 'center';
-    dateCtx.textBaseline = 'middle';
-    dateCtx.fillText(food.emoji || '🍽️', 0, 0);
-    dateCtx.restore();
+    drawCircleItem(dateCtx, food, x, y, body.angle, body._sz || 42);
   });
 }
 dateDraw();
@@ -897,6 +926,8 @@ async function handleSharedFile(e) {
   try {
     const b64  = await toBase64(file);
     const food = await analyzeFood(b64);
+    // 写真を丸くコロコロさせるためbase64を保存
+    food.photoBase64 = b64;
     if (fileInputTarget === 'date') {
       addDateFoodItem(food);
     } else {
@@ -1297,14 +1328,15 @@ function enableGyro() {
 // betaの平滑化用
 let smoothBeta  = null;
 let smoothGamma = null;
-const SMOOTH = 0.2;
+const SMOOTH = 0.3; // 高めにして反応を速く
 
 function handleOrientation(e) {
   if (!gyroEnabled) return;
 
-  const rawBeta  = e.beta  ?? 90;
+  const rawBeta  = e.beta  ?? 80;
   const rawGamma = e.gamma ?? 0;
 
+  // 平滑化
   if (smoothBeta === null) {
     smoothBeta  = rawBeta;
     smoothGamma = rawGamma;
@@ -1313,15 +1345,16 @@ function handleOrientation(e) {
     smoothGamma = smoothGamma + SMOOTH * (rawGamma - smoothGamma);
   }
 
-  // 左右傾き
-  const gx = Math.max(-3, Math.min(3, smoothGamma / 18));
+  // 左右: gamma（右傾け→右に転がる）
+  const gx = Math.max(-3, Math.min(3, smoothGamma / 15));
 
-  // 上下重力: beta=80が縦持ち基準
-  // tilt/18で感度を上げる（30だと動きが小さすぎた）
-  // 最小値0.3にクランプして完全に上に行かないようにする
+  // 上下: beta=80が縦持ち基準 → gy=1.5
+  // 上部を下に傾ける(beta増加) → gy増加（下に転がる）
+  // 下部を下に傾ける(beta減少) → gy減少（上に転がる）
+  // 最小値0.2で完全に上固定にはならないようにする
   const BETA_BASE = 80;
   const tilt = smoothBeta - BETA_BASE;
-  const gy = Math.max(0.3, Math.min(3, 1.5 + tilt / 18));
+  const gy = Math.max(0.2, Math.min(3.5, 1.5 + tilt / 15));
 
   engine.gravity.x     = gx; engine.gravity.y     = gy;
   dateEngine.gravity.x = gx; dateEngine.gravity.y = gy;
