@@ -272,6 +272,26 @@ canvas { display:block; position:absolute; top:0; left:0; }
 }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
+/* 広告オフバナー */
+#ad-banner-area {
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(212,98,42,0.08), rgba(184,134,11,0.08));
+  border-bottom: 1px solid var(--border);
+}
+#ad-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 7px 16px;
+  cursor: pointer;
+  font-family: 'DotGothic16', monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+#ad-banner-inner:active { opacity: 0.7; }
+#ad-banner-inner span.highlight { color: var(--accent2); font-weight: bold; }
+
 ::-webkit-scrollbar { width:4px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
@@ -309,6 +329,8 @@ input[type=file] {
       <button class="nav-tab" onclick="showView('calendar')">カレンダー</button>
     </div>
   </header>
+  <!-- 広告オフバナー（プレミアム未加入時のみJSで表示） -->
+  <div id="ad-banner-area"></div>
 
   <div id="app">
 
@@ -1291,18 +1313,15 @@ function handleOrientation(e) {
     smoothGamma = smoothGamma + SMOOTH * (rawGamma - smoothGamma);
   }
 
-  // 左右傾き: gammaをそのまま（右傾け→右に転がる）
-  const gx = Math.max(-3, Math.min(3, smoothGamma / 25));
+  // 左右傾き
+  const gx = Math.max(-3, Math.min(3, smoothGamma / 18));
 
-  // 上下重力:
-  // 縦持ち基準(beta≈80)で gy=1.5（普通の重力）
-  // そこから傾けた分だけズレを加算
-  // beta=80+45=125 → gy=1.5+1.5=3（強く下）
-  // beta=80-45=35  → gy=1.5-1.5=0（無重力）
-  // beta=80-80=0   → gy=1.5-2.7≈-1（少し上）だが最小0.3でクランプ
-  const BETA_BASE = 80; // 実測の縦持ち基準値
-  const tilt = smoothBeta - BETA_BASE; // 縦持ちからのズレ
-  const gy = Math.max(0.3, Math.min(3, 1.5 + tilt / 30));
+  // 上下重力: beta=80が縦持ち基準
+  // tilt/18で感度を上げる（30だと動きが小さすぎた）
+  // 最小値0.3にクランプして完全に上に行かないようにする
+  const BETA_BASE = 80;
+  const tilt = smoothBeta - BETA_BASE;
+  const gy = Math.max(0.3, Math.min(3, 1.5 + tilt / 18));
 
   engine.gravity.x     = gx; engine.gravity.y     = gy;
   dateEngine.gravity.x = gx; dateEngine.gravity.y = gy;
@@ -1317,21 +1336,15 @@ let isPremium = localStorage.getItem('meshikoro_premium') === 'true';
 
 // 広告モーダルHTML（body末尾に追加）
 function initAdSystem() {
-  // プレミアムバナーをaction-barに追加
-  if (!isPremium) {
-    const bar = document.getElementById('action-bar');
-    const adBanner = document.createElement('div');
-    adBanner.id = 'ad-banner';
-    adBanner.style.cssText = `
-      width:100%; text-align:center; padding:4px 0;
-      font-size:11px; color:var(--muted); font-family:'DotGothic16',monospace;
-      border-top:1px solid var(--border); background:var(--panel);
-      cursor:pointer; flex-basis:100%; order:-1; margin-bottom:4px;
-    `;
-    adBanner.innerHTML = `<span style="color:var(--accent2)">✨ 広告を非表示</span> ${AD_PRICE_YEN}円 — タップして購入`;
-    adBanner.onclick = () => openPremiumModal();
-    bar.prepend(adBanner);
-  }
+  if (isPremium) return;
+  const area = document.getElementById('ad-banner-area');
+  if (!area) return;
+  area.innerHTML = `
+    <div id="ad-banner-inner" onclick="openPremiumModal()">
+      <span>📺 広告が表示されます</span>
+      <span class="highlight">✨ ${AD_PRICE_YEN}円で広告オフ →</span>
+    </div>
+  `;
 }
 
 function openPremiumModal() {
@@ -1369,11 +1382,10 @@ function openPremiumModal() {
 }
 
 function purchasePremium() {
-  // 実際はRevenueCatやStoreKit経由。ここではデモとしてlocalStorageに保存
   isPremium = true;
   localStorage.setItem('meshikoro_premium', 'true');
   document.getElementById('premium-overlay')?.remove();
-  document.getElementById('ad-banner')?.remove();
+  document.getElementById('ad-banner-area').innerHTML = '';
   document.getElementById('interstitial-ad')?.remove();
   showToast('✨ プレミアムになりました！広告が消えました 🎉');
 }
