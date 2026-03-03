@@ -352,6 +352,16 @@ canvas { display:block; position:absolute; top:0; left:0; }
   </div><!-- #app -->
 </div><!-- #app-root -->
 
+<!-- ジャイロデバッグ表示（確認後に削除） -->
+<div id="gyro-debug" style="
+  display:none; position:fixed; top:60px; left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,0.75); color:#fff;
+  font-family:monospace; font-size:13px;
+  padding:8px 14px; border-radius:8px; z-index:999;
+  pointer-events:none; white-space:nowrap;
+"></div>
+
 <!-- FOOD MENU (タップ時) -->
 <div id="food-menu">
   <span id="fm-emoji" style="font-size:24px"></span>
@@ -368,7 +378,10 @@ canvas { display:block; position:absolute; top:0; left:0; }
     <div id="day-detail-title"></div>
     <div id="day-detail-summary"></div>
     <div id="day-detail-list"></div>
-    <button class="btn btn-cancel" style="margin-top:12px;width:100%;justify-content:center" onclick="closeDayDetail()">閉じる</button>
+    <button class="btn btn-primary" id="day-add-btn" style="margin-top:12px;width:100%;justify-content:center" onclick="openPastAddModal()">
+      ＋ この日に食事を追加
+    </button>
+    <button class="btn btn-cancel" style="margin-top:8px;width:100%;justify-content:center" onclick="closeDayDetail()">閉じる</button>
   </div>
 </div>
 
@@ -728,10 +741,11 @@ function addFoodItem(food) {
 }
 
 // ══════════════════════════════════════
-// MANUAL MODAL
+// MANUAL MODAL（今日 or 過去未来共用）
 // ══════════════════════════════════════
 const EMOJIS = ['🍙','🍱','🍜','🍣','🍛','🍔','🍕','🥗','🍰','🥩','🍳','🥞','🍞','🥪','🌮','🥘','🍲','🍝','🧆','🍦','☕','🥤','🍺','🍷'];
-let pickerEmoji = { manual:'🍙', edit:'🍙' };
+let pickerEmoji = { manual:'🍙', edit:'🍙', past:'🍙' };
+let manualTargetDate = null; // null = 今日, 文字列 = 指定日
 
 function buildPicker(containerId, key, initial) {
   pickerEmoji[key] = initial || '🍙';
@@ -751,22 +765,49 @@ function buildPicker(containerId, key, initial) {
   });
 }
 
-function openManualModal() {
+function openManualModal(targetDate) {
+  manualTargetDate = targetDate || null;
   document.getElementById('m-name').value  = '';
   document.getElementById('m-cal').value   = '';
   document.getElementById('m-color').value = '#d4622a';
   buildPicker('manual-emoji-picker', 'manual', '🍙');
+  // タイトルを日付に応じて変える
+  const dateStr = manualTargetDate || todayKey();
+  const [y,mo,d] = dateStr.split('-');
+  document.querySelector('#manual-modal h3').textContent =
+    `✏️ ${parseInt(y)}年${parseInt(mo)}月${parseInt(d)}日に追加`;
   document.getElementById('manual-modal').classList.add('open');
   setTimeout(() => document.getElementById('m-name').focus(), 100);
 }
-function closeManualModal() { document.getElementById('manual-modal').classList.remove('open'); }
+function closeManualModal() {
+  document.getElementById('manual-modal').classList.remove('open');
+  manualTargetDate = null;
+}
 
 function submitManual() {
   const name = document.getElementById('m-name').value.trim();
   if (!name) { showToast('料理名を入力してください'); return; }
   const cal   = parseInt(document.getElementById('m-cal').value) || 0;
   const color = document.getElementById('m-color').value;
-  addFoodItem({ name, emoji:pickerEmoji.manual, calories:cal, color, shape:'circle' });
+  const food  = { name, emoji:pickerEmoji.manual, calories:cal, color, shape:'circle' };
+
+  const targetDate = manualTargetDate || todayKey();
+  const items = getDay(targetDate);
+  const item  = { id: Date.now(), ...food };
+  items.push(item);
+  saveDay(targetDate, items);
+
+  // 今日なら物理に追加
+  if (targetDate === todayKey()) {
+    addPhysBody(item);
+    document.getElementById('hint-msg').style.display = 'none';
+    updateTodayStats();
+  }
+
+  // カレンダーと詳細を更新
+  renderCalendar();
+  if (currentDetailDate === targetDate) renderDayDetail(targetDate);
+
   closeManualModal();
   showToast(`✅ ${name} を追加しました！`);
 }
@@ -876,9 +917,10 @@ function renderCalendar() {
       kc.className = 'cal-kcal';
       kc.textContent = items.reduce((a,b)=>a+(b.calories||0),0) + 'kcal';
       cell.appendChild(kc);
-
-      cell.onclick = () => openDayDetail(ds);
     }
+
+    // 全日付タップで開けるようにする
+    cell.onclick = () => openDayDetail(ds);
     grid.appendChild(cell);
   }
 }
@@ -896,6 +938,12 @@ function openDayDetail(ds) {
 function closeDayDetail() {
   document.getElementById('day-detail').classList.remove('open');
   currentDetailDate = null;
+}
+
+function openPastAddModal() {
+  if (!currentDetailDate) return;
+  closeDayDetail();
+  setTimeout(() => openManualModal(currentDetailDate), 200);
 }
 function renderDayDetail(ds) {
   const items = getDay(ds);
@@ -963,6 +1011,7 @@ function enableGyro() {
     engine.gravity.y = 1.5;
     document.getElementById('gyro-btn').classList.remove('gyro-on');
     document.getElementById('gyro-btn').textContent = '📱';
+    document.getElementById('gyro-debug').style.display = 'none';
     showToast('📱 ジャイロ OFF');
     return;
   }
@@ -970,27 +1019,23 @@ function enableGyro() {
   window.addEventListener('deviceorientation', handleOrientation, true);
   document.getElementById('gyro-btn').classList.add('gyro-on');
   document.getElementById('gyro-btn').textContent = '🌀';
+  document.getElementById('gyro-debug').style.display = 'block';
   showToast('🌀 ジャイロ ON！傾けてみて！');
 }
 
 function handleOrientation(e) {
   if (!gyroEnabled) return;
+  const alpha = Math.round(e.alpha || 0);
+  const beta  = Math.round(e.beta  || 0);
+  const gamma = Math.round(e.gamma || 0);
 
-  // iPhoneを縦に持った基準値:
-  //   beta  = 90前後  (スマホを立てた状態)
-  //   gamma = 0前後   (まっすぐ持った状態)
-  //
-  // 「上部を下に傾ける」= betaが増える(90→120) → 下に転がる(gy正)
-  // 「下部を下に傾ける」= betaが減る(90→60)   → 上に転がる(gy負)
-  // 「左に傾ける」      = gammaが負になる       → 左に転がる(gx負)
-  // 「右に傾ける」      = gammaが正になる       → 右に転がる(gx正)
+  // デバッグ表示
+  const dbg = document.getElementById('gyro-debug');
+  if (dbg) dbg.textContent = `α:${alpha} β:${beta} γ:${gamma} | gx:${(gamma/20).toFixed(2)} gy:${((beta-90)/20).toFixed(2)}`;
 
-  const gamma = e.gamma || 0;
-  const beta  = e.beta  || 0;
-
-  // 縦持ち基準(beta=90)からのズレをそのまま重力に
-  const gx = Math.max(-2.5, Math.min(2.5,  gamma        / 20));
-  const gy = Math.max(-2.0, Math.min(2.5, (beta - 90)   / 20));
+  // 縦持ち基準(beta≈90)からのズレで重力計算
+  const gx = Math.max(-2.5, Math.min(2.5,  gamma       / 20));
+  const gy = Math.max(-2.0, Math.min(2.5, (beta - 90)  / 20));
 
   engine.gravity.x = gx;
   engine.gravity.y = gy;
